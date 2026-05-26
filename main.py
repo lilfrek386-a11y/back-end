@@ -1,5 +1,6 @@
-from fastapi import FastAPI, status
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.routers import health
 
 app = FastAPI()
 
@@ -11,10 +12,4 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@app.get("/", status_code=status.HTTP_200_OK)
-async def health_check():
-    return {
-        "status_code": 200,
-        "detail": "ok",
-        "result": "working"
-    }
+app.include_router(health.router)
