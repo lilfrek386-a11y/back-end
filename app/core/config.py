@@ -1,19 +1,32 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class Settings(BaseSettings):
-    DB_HOST: str
-    DB_PORT: int
-    DB_USER: str
-    DB_PASS: str
-    DB_NAME: str
-    REDIS_HOST: str
-    REDIS_PORT: int
+class DatabaseConfig(BaseSettings):
+    HOST: str
+    PORT: int
+    USER: str
+    PASS: str
+    NAME: str
 
     @property
-    def DATABASE_URL(self) -> str:
-        return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASS}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+    def URL(self) -> str:
+        return f"postgresql+asyncpg://{self.USER}:{self.PASS}@{self.HOST}:{self.PORT}/{self.NAME}"
 
-    model_config = SettingsConfigDict(env_file=".env")
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="DB_", extra="ignore")
 
-settings = Settings()
+
+class RedisConfig(BaseSettings):
+    HOST: str
+    PORT: int
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="REDIS_", extra="ignore"
+    )
+
+
+class AppSettings(BaseSettings):
+    db: DatabaseConfig = DatabaseConfig()
+    redis: RedisConfig = RedisConfig()
+
+
+settings = AppSettings()
