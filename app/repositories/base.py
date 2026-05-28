@@ -1,20 +1,19 @@
-from typing import TypeVar, Generic, Sequence
+from collections.abc import Sequence
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import Base
 
-T = TypeVar("T", bound=Base)
 
-class BaseRepository(Generic[T]):
+class BaseRepository[T: Base]:
     model: type[T]
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, model: type[T]) -> None:
         self.db = db
+        self.model = model
 
     async def get_one(self, obj_id: int) -> T | None:
-        obj = await self.db.get(self.model, obj_id)
-        return obj
+        return await self.db.get(self.model, obj_id)
 
     async def get_all(self) -> Sequence[T]:
         stmt = select(self.model).order_by(self.model.id)
