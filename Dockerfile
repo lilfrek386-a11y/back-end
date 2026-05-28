@@ -6,6 +6,9 @@ RUN pip install uv
 COPY uv.lock pyproject.toml ./
 RUN uv sync --frozen --no-dev
 
+COPY alembic.ini .
+COPY alembic ./alembic
+
 COPY main.py .
 COPY app ./app
 
