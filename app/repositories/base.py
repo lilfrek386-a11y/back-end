@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.base import Base
@@ -15,10 +15,15 @@ class BaseRepository[T: Base]:
     async def get_one(self, obj_id: int) -> T | None:
         return await self.db.get(self.model, obj_id)
 
-    async def get_all(self) -> Sequence[T]:
-        stmt = select(self.model).order_by(self.model.id)
+    async def get_all(self, skip: int = 0, limit: int = 100) -> tuple[Sequence[T], int]:
+        count_stmt = select(func.count()).select_from(self.model)
+        total_count = await self.db.scalar(count_stmt)
+
+        stmt = select(self.model).offset(skip).limit(limit)
         result = await self.db.execute(stmt)
-        return result.scalars().all()
+        items = result.scalars().all()
+
+        return items, total_count or 0
 
     async def create(self, data: dict) -> T:
         dt_obj = self.model(**data)
