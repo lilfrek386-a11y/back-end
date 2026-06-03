@@ -38,5 +38,5 @@ class UserDetailResponse(UserBase):
 
 
 class UsersListResponse(BaseModel):
-    items: list[UserDetailResponse]
+    users: list[UserDetailResponse]
     total_count: int
