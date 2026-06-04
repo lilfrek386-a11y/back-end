@@ -17,6 +17,8 @@ services:
         - action: sync+restart
           path: .
           target: /app
+          ignore:
+            - .venv/
         - action: rebuild
           path: uv.lock
 
