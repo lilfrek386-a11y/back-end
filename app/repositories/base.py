@@ -1,3 +1,4 @@
+from uuid import UUID
 from collections.abc import Sequence
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +13,7 @@ class BaseRepository[T: Base]:
         self.db = db
         self.model = model
 
-    async def get_one(self, obj_id: int) -> T | None:
+    async def get_one(self, obj_id: UUID) -> T | None:
         return await self.db.get(self.model, obj_id)
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> tuple[Sequence[T], int]:
