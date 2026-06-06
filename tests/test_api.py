@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock
+from uuid import uuid4
 
 from main import app
 from app.dependencies.user import get_user_service
@@ -29,7 +30,7 @@ def test_create_user():
     mock_service = AsyncMock()
 
     mock_user_response = UserDetailResponse(
-        id=1,
+        id=uuid4(),
         name="Ivan",
         email="ivan@test.com",
         age=None,

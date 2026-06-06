@@ -2,6 +2,7 @@ import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 from fastapi import HTTPException
+from uuid import uuid4
 
 from app.services.user import UserService
 from app.schemas.user import SignUpRequest
@@ -15,7 +16,7 @@ async def test_create_new_user_success():
     mock_uow.users.get_user_by_email = AsyncMock(return_value=None)
 
     fake_db_user = User(
-        id=1,
+        id=uuid4(),
         name="Test",
         email="test@example.com",
         age=20,
@@ -41,7 +42,7 @@ async def test_create_new_user_success():
 async def test_create_new_user_email_taken():
     mock_uow = MagicMock()
     mock_uow.users.get_user_by_email = AsyncMock(
-        return_value=User(id=2, email="taken@example.com")
+        return_value=User(id=uuid4(), email="taken@example.com")
     )
 
     service = UserService(uow=mock_uow)
