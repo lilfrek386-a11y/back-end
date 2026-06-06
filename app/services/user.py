@@ -1,4 +1,6 @@
 import logging
+from uuid import UUID
+
 from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -18,7 +20,7 @@ class UserService:
     def __init__(self, uow: UnitOfWork):
         self.uow = uow
 
-    async def get_user_by_id(self, user_id: int) -> UserDetailResponse:
+    async def get_user_by_id(self, user_id: UUID) -> UserDetailResponse:
         async with self.uow:
             user = await self.uow.users.get_one(user_id)
             if not user:
@@ -68,8 +70,19 @@ class UserService:
                 detail="Internal server error occurred during registration.",
             )
 
+    async def create_by_email(self, email: str) -> UserDetailResponse:
+        async with self.uow:
+            user = await self.uow.users.create(
+                {
+                    "email": email,
+                    "name": email.split("@")[0],
+                    "hashed_password": "",
+                }
+            )
+            return UserDetailResponse.model_validate(user)
+
     async def update_user(
-        self, user_id: int, user_data: UserUpdateRequest
+        self, user_id: UUID, user_data: UserUpdateRequest
     ) -> UserDetailResponse:
         logger.info(f"Attempting to update user with ID: {user_id}")
         try:
@@ -98,7 +111,7 @@ class UserService:
                 status_code=500, detail="Failed to update user due to a database error."
             )
 
-    async def delete_user(self, user_id: int) -> None:
+    async def delete_user(self, user_id: UUID) -> None:
         logger.info(f"Attempting to delete user with ID: {user_id}")
         try:
             async with self.uow:
