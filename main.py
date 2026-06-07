@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import user_router, health_router
+from app.routers import user_router, health_router, auth_router
 from app.core.logger import setup_logging
 
 setup_logging()
@@ -51,3 +51,4 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 app.include_router(health_router)
 app.include_router(user_router)
+app.include_router(auth_router)
