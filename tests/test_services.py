@@ -12,11 +12,14 @@ from app.models.user import User
 @pytest.mark.asyncio
 async def test_create_new_user_success():
     mock_uow = MagicMock()
+    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
+    mock_uow.__aexit__ = AsyncMock(return_value=False)
 
     mock_uow.users.get_user_by_email = AsyncMock(return_value=None)
 
+    fake_id = uuid4()
     fake_db_user = User(
-        id=uuid4(),
+        id=fake_id,
         name="Test",
         email="test@example.com",
         age=20,
@@ -26,7 +29,6 @@ async def test_create_new_user_success():
     mock_uow.users.create = AsyncMock(return_value=fake_db_user)
 
     service = UserService(uow=mock_uow)
-
     request_data = SignUpRequest(
         name="Test", email="test@example.com", password="password123", age=20
     )
@@ -34,19 +36,21 @@ async def test_create_new_user_success():
     result = await service.create_new_user(request_data)
 
     assert result.email == "test@example.com"
-    assert result.id == 1
+    assert result.id == fake_id
     mock_uow.users.get_user_by_email.assert_called_once_with("test@example.com")
 
 
 @pytest.mark.asyncio
 async def test_create_new_user_email_taken():
     mock_uow = MagicMock()
+    mock_uow.__aenter__ = AsyncMock(return_value=mock_uow)
+    mock_uow.__aexit__ = AsyncMock(return_value=False)
+
     mock_uow.users.get_user_by_email = AsyncMock(
         return_value=User(id=uuid4(), email="taken@example.com")
     )
 
     service = UserService(uow=mock_uow)
-
     request_data = SignUpRequest(
         name="Bad", email="taken@example.com", password="password123", age=25
     )
