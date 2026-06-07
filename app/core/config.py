@@ -32,10 +32,31 @@ class LogConfig(BaseSettings):
     )
 
 
+class JWTConfig(BaseSettings):
+    SECRET_KEY: str
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="JWT_", extra="ignore"
+    )
+
+
+class Auth0Config(BaseSettings):
+    DOMAIN: str
+    AUDIENCE: str
+
+    model_config = SettingsConfigDict(
+        env_file=".env", env_prefix="AUTH0_", extra="ignore"
+    )
+
+
 class AppSettings(BaseSettings):
     db: DatabaseConfig = DatabaseConfig()
     redis: RedisConfig = RedisConfig()
     log: LogConfig = LogConfig()
+    jwt: JWTConfig = JWTConfig()
+    auth0: Auth0Config = Auth0Config()
 
 
 settings = AppSettings()
