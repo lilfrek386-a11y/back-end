@@ -2,12 +2,14 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
+from app.dependencies.auth import get_current_user
 from app.services.user import UserService
 from app.schemas.user import (
     SignUpRequest,
     UserUpdateRequest,
     UserDetailResponse,
     UsersListResponse,
+    UserUpdateMeRequest,
 )
 from app.dependencies.user import get_user_service
 
@@ -46,6 +48,15 @@ async def create_user(
     return await service.create_new_user(user)
 
 
+@router.patch("/me", response_model=UserDetailResponse)
+async def update_me(
+    user_data: UserUpdateMeRequest,
+    current_user: UserDetailResponse = Depends(get_current_user),
+    service: UserService = Depends(get_user_service),
+) -> UserDetailResponse:
+    return await service.update_user(current_user.id, user_data)
+
+
 @router.patch("/{user_id}", response_model=UserDetailResponse)
 async def update_user(
     user_id: UUID,
@@ -55,8 +66,17 @@ async def update_user(
     return await service.update_user(user_id, user)
 
 
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    current_user: UserDetailResponse = Depends(get_current_user),
+    service: UserService = Depends(get_user_service),
+) -> None:
+    await service.delete_user(current_user.id)
+
+
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user(
     user_id: UUID, service: UserService = Depends(get_user_service)
 ) -> None:
+    # TODO: restrict to admin only
     await service.delete_user(user_id)

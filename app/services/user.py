@@ -2,6 +2,7 @@ import logging
 from uuid import UUID
 
 from fastapi import HTTPException
+from pydantic import BaseModel
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.utils.uow import UnitOfWork
@@ -82,7 +83,7 @@ class UserService:
             return UserDetailResponse.model_validate(user)
 
     async def update_user(
-        self, user_id: UUID, user_data: UserUpdateRequest
+        self, user_id: UUID, user_data: BaseModel
     ) -> UserDetailResponse:
         logger.info(f"Attempting to update user with ID: {user_id}")
         try:
