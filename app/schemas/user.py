@@ -41,3 +41,8 @@ class UserDetailResponse(UserBase):
 class UsersListResponse(BaseModel):
     users: list[UserDetailResponse]
     total_count: int
+
+
+class UserUpdateMeRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=50)
+    password: str | None = Field(default=None, min_length=8)
