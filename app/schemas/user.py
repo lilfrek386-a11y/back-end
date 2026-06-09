@@ -14,11 +14,6 @@ class UserSchema(UserBase):
     pass
 
 
-class SignInRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
 class SignUpRequest(UserBase):
     password: str = Field(
         ..., min_length=8, description="Password must be at least 8 characters"
