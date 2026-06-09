@@ -3,7 +3,8 @@ from jwt import PyJWKClient
 from datetime import timedelta, datetime, timezone
 from pwdlib import PasswordHash
 from app.core.config import settings
-from fastapi import HTTPException, status
+
+from app.core.exceptions import IncorrectCredentialsException
 
 password_hash = PasswordHash.recommended()
 
@@ -55,12 +56,14 @@ def verify_auth0_token(token: str) -> dict:
         )
         return payload
 
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Auth0 token expired"
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid Auth0 token: {str(e)}",
-        )
+    except (jwt.PyJWTError, Exception):
+        raise IncorrectCredentialsException
+
+
+def create_refresh_token(data: dict) -> str:
+    expires = datetime.now(timezone.utc) + timedelta(days=30)
+    return jwt.encode(
+        {**data, "exp": int(expires.timestamp())},
+        settings.jwt.SECRET_KEY,
+        algorithm=settings.jwt.ALGORITHM,
+    )
