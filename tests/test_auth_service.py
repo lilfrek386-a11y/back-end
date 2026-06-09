@@ -2,11 +2,11 @@ from uuid import uuid4
 
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import HTTPException
 
 from app.services.auth import AuthService
-from app.schemas.user import SignInRequest
+from app.schemas.auth import SignInRequest
 from app.models.user import User
+from app.core.exceptions import IncorrectCredentialsException
 
 
 @pytest.mark.asyncio
@@ -51,11 +51,8 @@ async def test_login_wrong_password(mock_verify_password):
     auth_service = AuthService(uow=mock_uow, user_service=mock_user_service)
     request_data = SignInRequest(email="test@example.com", password="WRONG_PASSWORD")
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(IncorrectCredentialsException):
         await auth_service.login(request_data)
-
-    assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "Incorrect email or password"
 
 
 @pytest.mark.asyncio
@@ -70,8 +67,5 @@ async def test_login_user_not_found():
     auth_service = AuthService(uow=mock_uow, user_service=mock_user_service)
     request_data = SignInRequest(email="notfound@example.com", password="password123")
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(IncorrectCredentialsException):
         await auth_service.login(request_data)
-
-    assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "Incorrect email or password"

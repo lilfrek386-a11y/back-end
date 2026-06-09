@@ -1,12 +1,12 @@
 import pytest
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
-from fastapi import HTTPException
 from uuid import uuid4
 
 from app.services.user import UserService
 from app.schemas.user import SignUpRequest
 from app.models.user import User
+from app.core.exceptions import EmailAlreadyTakenException
 
 
 @pytest.mark.asyncio
@@ -55,8 +55,5 @@ async def test_create_new_user_email_taken():
         name="Bad", email="taken@example.com", password="password123", age=25
     )
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(EmailAlreadyTakenException):
         await service.create_new_user(request_data)
-
-    assert exc_info.value.status_code == 409
-    assert exc_info.value.detail == "Email already registered"
