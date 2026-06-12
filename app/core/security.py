@@ -64,6 +64,6 @@ def create_refresh_token(data: dict) -> str:
     expires = datetime.now(timezone.utc) + timedelta(days=30)
     return jwt.encode(
         {**data, "exp": int(expires.timestamp())},
-        settings.jwt.SECRET_KEY,
+        settings.jwt.REFRESH_SECRET_KEY,
         algorithm=settings.jwt.ALGORITHM,
     )
