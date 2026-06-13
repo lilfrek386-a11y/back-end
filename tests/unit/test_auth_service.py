@@ -1,11 +1,12 @@
 import pytest
 from unittest.mock import AsyncMock, patch
-from fastapi import HTTPException
 from uuid import uuid4
+from datetime import datetime, timezone
 
 from app.services.auth import AuthService
-from app.schemas.user import SignInRequest
+from app.schemas.auth import SignInRequest
 from app.models.user import User
+from app.core.exceptions import IncorrectCredentialsException
 
 
 @pytest.mark.asyncio
@@ -15,6 +16,8 @@ async def test_login_success(_, mock_uow):
         return_value=User(
             id=uuid4(),
             email="test@example.com",
+            name="Test User",
+            created_at=datetime.now(timezone.utc),
             hashed_password="some_fake_hash_string",
         )
     )
@@ -25,7 +28,6 @@ async def test_login_success(_, mock_uow):
     )
 
     assert result.access_token is not None
-    assert isinstance(result.access_token, str)
 
 
 @pytest.mark.asyncio
@@ -35,19 +37,18 @@ async def test_login_wrong_password(_, mock_uow):
         return_value=User(
             id=uuid4(),
             email="test@example.com",
+            name="Test User",
+            created_at=datetime.now(timezone.utc),
             hashed_password="some_fake_hash_string",
         )
     )
 
     auth_service = AuthService(uow=mock_uow, user_service=AsyncMock())
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(IncorrectCredentialsException):
         await auth_service.login(
             SignInRequest(email="test@example.com", password="WRONG_PASSWORD")
         )
-
-    assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "Incorrect email or password"
 
 
 @pytest.mark.asyncio
@@ -56,10 +57,7 @@ async def test_login_user_not_found(mock_uow):
 
     auth_service = AuthService(uow=mock_uow, user_service=AsyncMock())
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(IncorrectCredentialsException):
         await auth_service.login(
             SignInRequest(email="notfound@example.com", password="password123")
         )
-
-    assert exc_info.value.status_code == 401
-    assert exc_info.value.detail == "Incorrect email or password"

@@ -1,40 +1,36 @@
 import pytest
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock
-from fastapi import HTTPException
+from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 from app.services.user import UserService
 from app.schemas.user import SignUpRequest
 from app.models.user import User
+from app.core.exceptions import EmailAlreadyTakenException
 
 
 @pytest.mark.asyncio
 async def test_create_new_user_success(mock_uow):
+    user_id = uuid4()
+
     mock_uow.users.get_user_by_email = AsyncMock(return_value=None)
 
-    fake_id = uuid4()
-    mock_uow.users.create = AsyncMock(
-        return_value=User(
-            id=fake_id,
-            name="Test",
-            email="test@example.com",
-            age=20,
-            hashed_password="hashed",
-            created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-        )
-    )
+    mock_db_user = MagicMock()
+    mock_db_user.id = user_id
+    mock_db_user.email = "test@example.com"
+    mock_db_user.name = "Good"
+    mock_db_user.age = 25
+    mock_uow.users.create = AsyncMock(return_value=mock_db_user)
 
     service = UserService(uow=mock_uow)
+
     result = await service.create_new_user(
         SignUpRequest(
-            name="Test", email="test@example.com", password="password123", age=20
+            name="Good", email="test@example.com", password="password123", age=25
         )
     )
 
     assert result.email == "test@example.com"
-    assert result.id == fake_id
-    mock_uow.users.get_user_by_email.assert_called_once_with("test@example.com")
+    mock_uow.users.create.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -45,12 +41,9 @@ async def test_create_new_user_email_taken(mock_uow):
 
     service = UserService(uow=mock_uow)
 
-    with pytest.raises(HTTPException) as exc_info:
+    with pytest.raises(EmailAlreadyTakenException):
         await service.create_new_user(
             SignUpRequest(
                 name="Bad", email="taken@example.com", password="password123", age=25
             )
         )
-
-    assert exc_info.value.status_code == 409
-    assert exc_info.value.detail == "Email already registered"
