@@ -1,4 +1,5 @@
 from app.core.postgres import session_factory
+from app.repositories.company import CompanyRepository
 from app.repositories.user import UserRepository
 
 
@@ -9,6 +10,7 @@ class UnitOfWork:
     async def __aenter__(self):
         self.session = self._session_factory()
         self.users = UserRepository(self.session)
+        self.companies = CompanyRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, tb):
