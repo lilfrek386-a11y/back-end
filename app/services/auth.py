@@ -1,5 +1,6 @@
 import logging
 
+from app.schemas.user import UserDetailResponse
 from app.services.user import UserService
 from app.utils.uow import UnitOfWork
 from app.schemas.auth import TokenResponse, SignInRequest
@@ -54,26 +55,29 @@ class AuthService:
             raise IncorrectCredentialsException
 
         logger.info(f"Successfully logged in user: {db_user.id} via credentials")
-        return self._create_token_response(db_user)
+
+        user = UserDetailResponse.model_validate(db_user)
+        return self._create_token_response(user)
 
     async def _login_via_auth0(self, auth0_token: str) -> TokenResponse:
         payload = verify_auth0_token(auth0_token)
         user_email = payload.get("email")
 
-        async with self.uow as uow:
-            user = await uow.users.get_user_by_email(user_email)
+        if not user_email:
+            logger.error("Auth0 token is valid, but missing 'email' claim")
+            raise IncorrectCredentialsException
 
-        if not user:
-            logger.info(
-                f"Auth0 login: User {user_email} not found, creating a new profile"
-            )
-            user = await self.user_service.create_by_email(user_email)
+        async with self.uow as uow:
+            db_user = await uow.users.get_user_by_email(user_email)
+
+        if db_user:
+            user = UserDetailResponse.model_validate(db_user)
         else:
-            logger.info(f"Successfully logged in user: {user.id} via Auth0")
+            user = await self.user_service.create_by_email(user_email)
 
         return self._create_token_response(user)
 
-    def _create_token_response(self, user) -> TokenResponse:
+    def _create_token_response(self, user: UserDetailResponse) -> TokenResponse:
         access_token = create_access_token({"sub": str(user.id), "email": user.email})
         refresh_token = create_refresh_token({"sub": str(user.id)})
         return TokenResponse(access_token=access_token, refresh_token=refresh_token)

@@ -53,11 +53,11 @@ class Auth0Config(BaseSettings):
 
 
 class AppSettings(BaseSettings):
-    db: DatabaseConfig = DatabaseConfig()
-    redis: RedisConfig = RedisConfig()
+    db: DatabaseConfig = DatabaseConfig()  # type: ignore
+    redis: RedisConfig = RedisConfig()  # type: ignore
     log: LogConfig = LogConfig()
-    jwt: JWTConfig = JWTConfig()
-    auth0: Auth0Config = Auth0Config()
+    jwt: JWTConfig = JWTConfig()  # type: ignore
+    auth0: Auth0Config = Auth0Config()  # type: ignore
 
 
 settings = AppSettings()

@@ -9,6 +9,7 @@ from app.schemas.user import (
     UserUpdateRequest,
     UserDetailResponse,
     UsersListResponse,
+    UserUpdateMeRequest,
 )
 from app.core.security import get_password_hash
 from app.core.exceptions import (
@@ -81,7 +82,9 @@ class UserService:
             return UserDetailResponse.model_validate(user)
 
     async def update_user(
-        self, user_id: UUID, user_data: UserUpdateRequest
+        self,
+        user_id: UUID,
+        user_data: UserUpdateRequest | UserUpdateMeRequest,
     ) -> UserDetailResponse:
         logger.info(f"Attempting to update user with ID: {user_id}")
         try:
