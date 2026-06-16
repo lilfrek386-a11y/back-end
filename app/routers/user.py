@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, status
 
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import CurrentUser
 from app.services.user import UserService
 from app.schemas.user import (
     SignUpRequest,
@@ -19,14 +19,14 @@ router = APIRouter(prefix="/users", tags=["Users"])
 @router.get(
     "/",
     response_model=UsersListResponse,
-    summary="Get all users",
+    summary="Get multiple users",
 )
-async def get_users(
+async def get_multi_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=100),
     service: UserService = Depends(get_user_service),
 ):
-    return await service.get_all_users(skip=skip, limit=limit)
+    return await service.get_multi_users(skip=skip, limit=limit)
 
 
 @router.get(
@@ -70,7 +70,7 @@ async def create_user(
 )
 async def update_me(
     user_data: UserUpdateMeRequest,
-    current_user: UserDetailResponse = Depends(get_current_user),
+    current_user: CurrentUser,
     service: UserService = Depends(get_user_service),
 ) -> UserDetailResponse:
     return await service.update_user(current_user.id, user_data)
@@ -95,7 +95,7 @@ async def update_user(
     summary="Delete current user",
 )
 async def delete_me(
-    current_user: UserDetailResponse = Depends(get_current_user),
+    current_user: CurrentUser,
     service: UserService = Depends(get_user_service),
 ) -> None:
     await service.delete_user(current_user.id)

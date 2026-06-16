@@ -193,7 +193,7 @@ async def test_get_all_companies(company_service, mock_uow):
 
     mock_uow.companies.get_all.return_value = ([mock_db_company], 1)
 
-    result = await company_service.get_all_companies(skip=0, limit=100)
+    result = await company_service.get_multi_companies(skip=0, limit=100)
 
     mock_uow.companies.get_all.assert_called_once_with(skip=0, limit=100)
     assert result is not None

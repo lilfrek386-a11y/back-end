@@ -39,7 +39,9 @@ class UserService:
                 raise UserNotFoundException
             return UserDetailResponse.model_validate(user)
 
-    async def get_all_users(self, skip: int = 0, limit: int = 100) -> UsersListResponse:
+    async def get_multi_users(
+        self, skip: int = 0, limit: int = 100
+    ) -> UsersListResponse:
         async with self.uow:
             users, total_count = await self.uow.users.get_all(skip=skip, limit=limit)
             users_list = [UserDetailResponse.model_validate(u) for u in users]

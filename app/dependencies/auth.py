@@ -1,4 +1,5 @@
 import uuid
+from typing import Annotated
 
 import jwt
 from fastapi import Depends
@@ -58,3 +59,6 @@ async def get_current_user(
         raise IncorrectCredentialsException
 
     return user
+
+
+type CurrentUser = Annotated[User, Depends(get_current_user)]

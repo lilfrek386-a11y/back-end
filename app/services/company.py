@@ -27,12 +27,10 @@ class CompanyService:
 
     async def get_company_by_id(self, company_id: UUID) -> CompanyDetailResponse:
         async with self.uow:
-            company = await self.uow.companies.get_one(company_id)
-            if not company:
-                raise CompanyNotFoundException
+            company = await self._get_company_or_raise(company_id)
             return CompanyDetailResponse.model_validate(company)
 
-    async def get_all_companies(
+    async def get_multi_companies(
         self, skip: int = 0, limit: int = 100
     ) -> CompaniesListResponse:
         async with self.uow:
@@ -52,14 +50,7 @@ class CompanyService:
         logger.info(f"Attempting to create new company: {company_data.name}")
         try:
             async with self.uow:
-                existing_company = await self.uow.companies.get_by_name_and_owner(
-                    name=company_data.name, owner_id=user_id
-                )
-                if existing_company:
-                    logger.warning(
-                        f"User {user_id} already has a company named {company_data.name}."
-                    )
-                    raise CompanyNameAlreadyTakenException
+                await self._check_name_is_unique(company_data.name, user_id)
 
                 db_company_data = company_data.model_dump()
                 db_company_data["owner_id"] = user_id
@@ -86,15 +77,9 @@ class CompanyService:
                 update_dict = company_data.model_dump(exclude_unset=True)
 
                 if "name" in update_dict:
-                    existing_company = await self.uow.companies.get_by_name_and_owner(
-                        name=update_dict["name"], owner_id=user_id
+                    await self._check_name_is_unique(
+                        update_dict["name"], user_id, exclude_id=company_id
                     )
-                    if existing_company and existing_company.id != company_id:
-                        logger.warning(
-                            f"Update failed: Company name '{update_dict['name']}' "
-                            f"is already taken by user {user_id}"
-                        )
-                        raise CompanyNameAlreadyTakenException
 
                 updated_company = await self._apply_update(
                     company_id, update_dict, user_id
@@ -140,13 +125,27 @@ class CompanyService:
             logger.error(f"Database error deleting company {company_id}: {str(e)}")
             raise DatabaseException
 
+    async def _get_company_or_raise(self, company_id: UUID):
+        company = await self.uow.companies.get_one(company_id)
+        if not company:
+            raise CompanyNotFoundException
+        return company
+
+    async def _check_name_is_unique(
+        self, name: str, owner_id: UUID, exclude_id: UUID | None = None
+    ) -> None:
+        existing_company = await self.uow.companies.get_by_name_and_owner(
+            name=name, owner_id=owner_id
+        )
+        if existing_company and existing_company.id != exclude_id:
+            logger.warning(f"User {owner_id} already has a company named {name}.")
+            raise CompanyNameAlreadyTakenException
+
     async def _get_company_and_check_owner(self, company_id: UUID, user_id: UUID):
         if self.uow.session is None:
             raise RuntimeError("Must be called within an active UoW context")
 
-        company = await self.uow.companies.get_one(company_id)
-        if not company:
-            raise CompanyNotFoundException
+        company = await self._get_company_or_raise(company_id)
 
         if company.owner_id != user_id:
             logger.warning(

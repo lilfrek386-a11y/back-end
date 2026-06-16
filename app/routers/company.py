@@ -1,7 +1,6 @@
 from uuid import UUID
-from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, status
 
 from app.schemas.company import (
     CompanyCreate,
@@ -10,16 +9,10 @@ from app.schemas.company import (
     CompanyDetailResponse,
     CompaniesListResponse,
 )
-from app.models.user import User
-from app.services.company import CompanyService
-from app.dependencies.auth import get_current_user
-
-from app.dependencies.company import get_company_service
+from app.dependencies.auth import CurrentUser
+from app.dependencies.company import CurrentCompanyService
 
 router = APIRouter(prefix="/companies", tags=["Companies"])
-
-CurrentUser = Annotated[User, Depends(get_current_user)]
-CurrentCompanyService = Annotated[CompanyService, Depends(get_company_service)]
 
 
 @router.post(
@@ -40,14 +33,14 @@ async def create_company(
     "/",
     response_model=CompaniesListResponse,
     status_code=status.HTTP_200_OK,
-    summary="Get all companies",
+    summary="Get multiple companies",
 )
-async def get_companies(
+async def get_multi_companies(
     service: CurrentCompanyService,
     skip: int = 0,
     limit: int = 100,
 ):
-    return await service.get_all_companies(skip=skip, limit=limit)
+    return await service.get_multi_companies(skip=skip, limit=limit)
 
 
 @router.get(
