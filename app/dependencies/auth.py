@@ -62,3 +62,4 @@ async def get_current_user(
 
 
 type CurrentUser = Annotated[User, Depends(get_current_user)]
+type AuthService = Annotated[AuthService, Depends(get_auth_service)]

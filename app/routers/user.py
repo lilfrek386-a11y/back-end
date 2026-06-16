@@ -1,9 +1,8 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, status
 
 from app.dependencies.auth import CurrentUser
-from app.services.user import UserService
 from app.schemas.user import (
     SignUpRequest,
     UserUpdateRequest,
@@ -11,7 +10,8 @@ from app.schemas.user import (
     UsersListResponse,
     UserUpdateMeRequest,
 )
-from app.dependencies.user import get_user_service
+from app.dependencies.user import UserService
+from app.dependencies.pagination import SkipQuery, LimitQuery
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -22,9 +22,9 @@ router = APIRouter(prefix="/users", tags=["Users"])
     summary="Get multiple users",
 )
 async def get_multi_users(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=100),
-    service: UserService = Depends(get_user_service),
+    service: UserService,
+    skip: SkipQuery = 0,
+    limit: LimitQuery = 100,
 ):
     return await service.get_multi_users(skip=skip, limit=limit)
 
@@ -35,7 +35,7 @@ async def get_multi_users(
     summary="Get user by email",
 )
 async def get_user_by_email(
-    user_email: str, service: UserService = Depends(get_user_service)
+    user_email: str, service: UserService
 ) -> UserDetailResponse:
     return await service.get_user_by_email(user_email)
 
@@ -45,9 +45,7 @@ async def get_user_by_email(
     response_model=UserDetailResponse,
     summary="Get user by ID",
 )
-async def get_user_by_id(
-    user_id: UUID, service: UserService = Depends(get_user_service)
-) -> UserDetailResponse:
+async def get_user_by_id(user_id: UUID, service: UserService) -> UserDetailResponse:
     return await service.get_user_by_id(user_id)
 
 
@@ -57,9 +55,7 @@ async def get_user_by_id(
     status_code=status.HTTP_201_CREATED,
     summary="Create a new user",
 )
-async def create_user(
-    user: SignUpRequest, service: UserService = Depends(get_user_service)
-) -> UserDetailResponse:
+async def create_user(user: SignUpRequest, service: UserService) -> UserDetailResponse:
     return await service.create_new_user(user)
 
 
@@ -71,7 +67,7 @@ async def create_user(
 async def update_me(
     user_data: UserUpdateMeRequest,
     current_user: CurrentUser,
-    service: UserService = Depends(get_user_service),
+    service: UserService,
 ) -> UserDetailResponse:
     return await service.update_user(current_user.id, user_data)
 
@@ -84,7 +80,7 @@ async def update_me(
 async def update_user(
     user_id: UUID,
     user: UserUpdateRequest,
-    service: UserService = Depends(get_user_service),
+    service: UserService,
 ) -> UserDetailResponse:
     return await service.update_user(user_id, user)
 
@@ -96,7 +92,7 @@ async def update_user(
 )
 async def delete_me(
     current_user: CurrentUser,
-    service: UserService = Depends(get_user_service),
+    service: UserService,
 ) -> None:
     await service.delete_user(current_user.id)
 
@@ -106,8 +102,6 @@ async def delete_me(
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Delete user by ID",
 )
-async def delete_user(
-    user_id: UUID, service: UserService = Depends(get_user_service)
-) -> None:
+async def delete_user(user_id: UUID, service: UserService) -> None:
     # TODO: restrict to admin only
     await service.delete_user(user_id)

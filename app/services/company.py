@@ -1,8 +1,6 @@
 import logging
 from uuid import UUID
 
-from sqlalchemy.exc import SQLAlchemyError
-
 from app.schemas.company import (
     CompanyUpdate,
     CompanyDetailResponse,
@@ -10,10 +8,9 @@ from app.schemas.company import (
     CompanyCreate,
     CompanyVisibilityUpdate,
 )
+from app.services.utils import check_company_owner
 from app.utils.uow import UnitOfWork
 from app.core.exceptions import (
-    DatabaseException,
-    NotOwnerException,
     CompanyNotFoundException,
     CompanyNameAlreadyTakenException,
 )
@@ -27,7 +24,9 @@ class CompanyService:
 
     async def get_company_by_id(self, company_id: UUID) -> CompanyDetailResponse:
         async with self.uow:
-            company = await self._get_company_or_raise(company_id)
+            company = await self.uow.companies.get_one(company_id)
+            if not company:
+                raise CompanyNotFoundException()
             return CompanyDetailResponse.model_validate(company)
 
     async def get_multi_companies(
@@ -48,22 +47,19 @@ class CompanyService:
         self, company_data: CompanyCreate, user_id: UUID
     ) -> CompanyDetailResponse:
         logger.info(f"Attempting to create new company: {company_data.name}")
-        try:
-            async with self.uow:
-                await self._check_name_is_unique(company_data.name, user_id)
+        async with self.uow:
+            await self._check_name_is_unique(company_data.name, user_id)
 
-                db_company_data = company_data.model_dump()
-                db_company_data["owner_id"] = user_id
+            db_company_data = company_data.model_dump()
+            db_company_data["owner_id"] = user_id
 
-                new_company = await self.uow.companies.create(db_company_data)
-                logger.info(f"Successfully created company: {company_data.name}")
-                return CompanyDetailResponse.model_validate(new_company)
-
-        except SQLAlchemyError as e:
-            logger.error(
-                f"Database error while creating company {company_data.name}: {str(e)}"
+            new_company = await self.uow.companies.create(db_company_data)
+            await self.uow.company_members.create(
+                {"company_id": new_company.id, "user_id": user_id}
             )
-            raise DatabaseException
+
+            logger.info(f"Successfully created company: {company_data.name}")
+            return CompanyDetailResponse.model_validate(new_company)
 
     async def update_company(
         self,
@@ -72,24 +68,17 @@ class CompanyService:
         user_id: UUID,
     ) -> CompanyDetailResponse:
         logger.info(f"Attempting to update company ID: {company_id}")
-        try:
-            async with self.uow:
-                update_dict = company_data.model_dump(exclude_unset=True)
+        async with self.uow:
+            update_dict = company_data.model_dump(exclude_unset=True)
 
-                if "name" in update_dict:
-                    await self._check_name_is_unique(
-                        update_dict["name"], user_id, exclude_id=company_id
-                    )
-
-                updated_company = await self._apply_update(
-                    company_id, update_dict, user_id
+            if "name" in update_dict:
+                await self._check_name_is_unique(
+                    update_dict["name"], user_id, exclude_id=company_id
                 )
-                logger.info(f"Successfully updated company ID: {company_id}")
-                return updated_company
 
-        except SQLAlchemyError as e:
-            logger.error(f"Database error updating company {company_id}: {str(e)}")
-            raise DatabaseException
+            updated_company = await self._apply_update(company_id, update_dict, user_id)
+            logger.info(f"Successfully updated company ID: {company_id}")
+            return updated_company
 
     async def change_visibility(
         self,
@@ -98,38 +87,18 @@ class CompanyService:
         user_id: UUID,
     ) -> CompanyDetailResponse:
         logger.info(f"Attempting to change visibility for company ID: {company_id}")
-        try:
-            async with self.uow:
-                update_dict = company_data.model_dump(exclude_unset=True)
-                updated_company = await self._apply_update(
-                    company_id, update_dict, user_id
-                )
-                logger.info(f"Visibility updated for company ID: {company_id}")
-                return updated_company
-
-        except SQLAlchemyError as e:
-            logger.error(
-                f"Database error changing visibility for {company_id}: {str(e)}"
-            )
-            raise DatabaseException
+        async with self.uow:
+            update_dict = company_data.model_dump(exclude_unset=True)
+            updated_company = await self._apply_update(company_id, update_dict, user_id)
+            logger.info(f"Visibility updated for company ID: {company_id}")
+            return updated_company
 
     async def delete_company(self, company_id: UUID, user_id: UUID) -> None:
         logger.info(f"Attempting to delete company ID: {company_id}")
-        try:
-            async with self.uow:
-                company = await self._get_company_and_check_owner(company_id, user_id)
-                await self.uow.companies.delete(company)
-                logger.info(f"Successfully deleted company ID: {company_id}")
-
-        except SQLAlchemyError as e:
-            logger.error(f"Database error deleting company {company_id}: {str(e)}")
-            raise DatabaseException
-
-    async def _get_company_or_raise(self, company_id: UUID):
-        company = await self.uow.companies.get_one(company_id)
-        if not company:
-            raise CompanyNotFoundException
-        return company
+        async with self.uow:
+            company = await check_company_owner(self.uow, company_id, user_id)
+            await self.uow.companies.delete(company)
+            logger.info(f"Successfully deleted company ID: {company_id}")
 
     async def _check_name_is_unique(
         self, name: str, owner_id: UUID, exclude_id: UUID | None = None
@@ -139,25 +108,11 @@ class CompanyService:
         )
         if existing_company and existing_company.id != exclude_id:
             logger.warning(f"User {owner_id} already has a company named {name}.")
-            raise CompanyNameAlreadyTakenException
-
-    async def _get_company_and_check_owner(self, company_id: UUID, user_id: UUID):
-        if self.uow.session is None:
-            raise RuntimeError("Must be called within an active UoW context")
-
-        company = await self._get_company_or_raise(company_id)
-
-        if company.owner_id != user_id:
-            logger.warning(
-                f"Access denied: User {user_id} is not the owner of {company_id}"
-            )
-            raise NotOwnerException
-
-        return company
+            raise CompanyNameAlreadyTakenException()
 
     async def _apply_update(
         self, company_id: UUID, update_dict: dict, user_id: UUID
     ) -> CompanyDetailResponse:
-        company = await self._get_company_and_check_owner(company_id, user_id)
+        company = await check_company_owner(self.uow, company_id, user_id)
         updated_company = await self.uow.companies.update(company, update_dict)
         return CompanyDetailResponse.model_validate(updated_company)

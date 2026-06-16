@@ -1,4 +1,4 @@
-import uuid
+from uuid import UUID
 from pydantic import BaseModel, Field, ConfigDict
 
 
@@ -21,8 +21,8 @@ class CompanyVisibilityUpdate(BaseModel):
 
 
 class CompanyDetailResponse(CompanyBase):
-    id: uuid.UUID
-    owner_id: uuid.UUID
+    id: UUID
+    owner_id: UUID
     is_visible: bool
 
     model_config = ConfigDict(from_attributes=True)

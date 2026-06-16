@@ -10,9 +10,7 @@ from app.core.security import (
     verify_auth0_token,
     create_refresh_token,
 )
-from app.core.exceptions import (
-    IncorrectCredentialsException,
-)
+from app.core.exceptions import IncorrectCredentialsException
 
 logger = logging.getLogger(__name__)
 
@@ -39,23 +37,22 @@ class AuthService:
         raise IncorrectCredentialsException()
 
     async def _login_with_credentials(self, email: str, password: str) -> TokenResponse:
-        async with self.uow as uow:
-            db_user = await uow.users.get_user_by_email(email)
+        async with self.uow:
+            db_user = await self.uow.users.get_user_by_email(email)
 
         if not db_user or not db_user.hashed_password:
             logger.warning(
                 f"Login failed: User with email {email} not found or lacks a password"
             )
-            raise IncorrectCredentialsException
+            raise IncorrectCredentialsException()
 
         if not verify_password(password, db_user.hashed_password):
             logger.warning(
                 f"Login failed: Incorrect password provided for email {email}"
             )
-            raise IncorrectCredentialsException
+            raise IncorrectCredentialsException()
 
         logger.info(f"Successfully logged in user: {db_user.id} via credentials")
-
         user = UserDetailResponse.model_validate(db_user)
         return self._create_token_response(user)
 
@@ -65,10 +62,10 @@ class AuthService:
 
         if not user_email:
             logger.error("Auth0 token is valid, but missing 'email' claim")
-            raise IncorrectCredentialsException
+            raise IncorrectCredentialsException()
 
-        async with self.uow as uow:
-            db_user = await uow.users.get_user_by_email(user_email)
+        async with self.uow:
+            db_user = await self.uow.users.get_user_by_email(user_email)
 
         if db_user:
             user = UserDetailResponse.model_validate(db_user)
