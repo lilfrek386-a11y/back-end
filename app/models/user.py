@@ -7,6 +7,7 @@ from app.models.mixins import TimestampMixin, UUIDMixin
 
 if TYPE_CHECKING:
     from app.models.company import Company
+    from app.models.company_action import CompanyAction
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -20,6 +21,12 @@ class User(Base, UUIDMixin, TimestampMixin):
     age: Mapped[int | None] = mapped_column(Integer, nullable=True)
     companies: Mapped[list["Company"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
+    )
+    company_actions: Mapped[list["CompanyAction"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    joined_companies: Mapped[list["Company"]] = relationship(
+        secondary="company_members", back_populates="members"
     )
 
     def __repr__(self) -> str:

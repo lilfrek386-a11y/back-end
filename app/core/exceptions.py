@@ -34,7 +34,7 @@ class NotOwnerException(HTTPException):
     def __init__(self):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You don't have permission to perform this action. Not the owner.",
+            detail="You don't have permission to perform this action. You are not the owner.",
         )
 
 
@@ -50,4 +50,83 @@ class CompanyNameAlreadyTakenException(HTTPException):
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
             detail="Company name is already taken by this user.",
+        )
+
+
+class InvitationAlreadyExist(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Invitation already exists for this user.",
+        )
+
+
+class UserAlreadyMemberException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="User is already a member of this company.",
+        )
+
+
+class CannotInviteYourselfException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Owner cannot invite themselves.",
+        )
+
+
+class InvitationNotFoundException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Invitation not found."
+        )
+
+
+class RequestAlreadyExistException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Membership request already exists.",
+        )
+
+
+class CannotRequestYourselfException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Owner cannot request to join their own company.",
+        )
+
+
+class RequestNotFoundException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Membership request not found.",
+        )
+
+
+class UserNotMemberException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User is not a member of this company.",
+        )
+
+
+class OwnerCannotLeaveException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The owner cannot leave the company. Transfer ownership or delete the company instead.",
+        )
+
+
+class CannotKickYourselfException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="You cannot kick yourself from the company.",
         )
