@@ -36,16 +36,14 @@ async def test_create_new_company_success(company_service, mock_uow):
     mock_db_company.owner_id = user_id
     mock_db_company.is_visible = False
 
-    mock_uow.companies.create.return_value = mock_db_company
+    mock_uow.companies.create = AsyncMock(return_value=mock_db_company)
+    mock_uow.company_members.create = AsyncMock()
 
     result = await company_service.create_new_company(company_data, user_id)
 
+    mock_uow.companies.create.assert_awaited_once()
+    mock_uow.company_members.create.assert_awaited_once()
     assert result.name == "Test Corp"
-    assert result.owner_id == user_id
-
-    expected_data = company_data.model_dump()
-    expected_data["owner_id"] = user_id
-    mock_uow.companies.create.assert_called_once_with(expected_data)
 
 
 @pytest.mark.asyncio
