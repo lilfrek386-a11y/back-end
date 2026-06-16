@@ -3,16 +3,18 @@ import logging
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy.exc import SQLAlchemyError
 
-from app.routers import user_router, health_router, auth_router, company_router
-from app.core.logger import setup_logging
-
-from app.core.exceptions import (
-    IncorrectCredentialsException,
-    UserNotFoundException,
-    EmailAlreadyTakenException,
-    DatabaseException,
+from app.routers import (
+    user_router,
+    health_router,
+    auth_router,
+    company_router,
+    company_members_router,
+    user_actions_router,
+    owner_actions_router,
 )
+from app.core.logger import setup_logging
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -47,39 +49,12 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-@app.exception_handler(IncorrectCredentialsException)
-async def incorrect_credentials_handler(
-    request: Request, exc: IncorrectCredentialsException
-):
-    return JSONResponse(
-        status_code=401,
-        content={"detail": "Incorrect email or password"},
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-
-@app.exception_handler(UserNotFoundException)
-async def user_not_found_handler(request: Request, exc: UserNotFoundException):
-    return JSONResponse(
-        status_code=404,
-        content={"detail": "User not found"},
-    )
-
-
-@app.exception_handler(EmailAlreadyTakenException)
-async def email_taken_handler(request: Request, exc: EmailAlreadyTakenException):
-    return JSONResponse(
-        status_code=409,
-        content={"detail": "Email already registered"},
-    )
-
-
-@app.exception_handler(DatabaseException)
-async def database_error_handler(request: Request, exc: DatabaseException):
-    logger.error("Database operation failed")
+@app.exception_handler(SQLAlchemyError)
+async def sqlalchemy_error_handler(request: Request, exc: SQLAlchemyError):
+    logger.error(f"Database error at {request.url.path}: {exc}", exc_info=True)
     return JSONResponse(
         status_code=500,
-        content={"detail": "Internal server error occurred."},
+        content={"detail": "Internal database error occurred."},
     )
 
 
@@ -96,3 +71,6 @@ app.include_router(health_router)
 app.include_router(user_router)
 app.include_router(auth_router)
 app.include_router(company_router)
+app.include_router(company_members_router)
+app.include_router(user_actions_router)
+app.include_router(owner_actions_router)
