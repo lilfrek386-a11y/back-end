@@ -104,6 +104,10 @@ class CompanyMemberService:
         self, company_id: UUID, skip: int = 0, limit: int = 100
     ) -> MembersListResponse:
         async with self.uow:
+            company = await self.uow.companies.get_one(company_id)
+            if not company:
+                raise CompanyNotFoundException()
+
             admins, total = await self.uow.company_members.get_by_role(
                 company_id, CompanyMemberRole.ADMIN, skip, limit
             )
