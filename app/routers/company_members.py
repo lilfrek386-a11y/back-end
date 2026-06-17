@@ -51,3 +51,50 @@ async def leave_company(
     service: MemberService,
 ):
     await service.leave_company(user_id=current_user.id, company_id=company_id)
+
+
+@router.get(
+    "/{company_id}/admins",
+    response_model=MembersListResponse,
+    status_code=status.HTTP_200_OK,
+)
+async def get_company_admins(
+    company_id: UUID,
+    service: MemberService,
+    skip: SkipQuery = 0,
+    limit: LimitQuery = 100,
+):
+    return await service.get_company_admins(
+        company_id=company_id, skip=skip, limit=limit
+    )
+
+
+@router.post(
+    "/{company_id}/admins/{user_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def appoint_admin(
+    company_id: UUID,
+    user_id: UUID,
+    current_user: CurrentUser,
+    service: MemberService,
+):
+    await service.appoint_admin(
+        owner_id=current_user.id, company_id=company_id, user_id=user_id
+    )
+    return {"detail": "User appointed as admin."}
+
+
+@router.delete(
+    "/{company_id}/admins/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
+async def remove_admin(
+    company_id: UUID,
+    user_id: UUID,
+    current_user: CurrentUser,
+    service: MemberService,
+):
+    await service.remove_admin(
+        owner_id=current_user.id, company_id=company_id, user_id=user_id
+    )
