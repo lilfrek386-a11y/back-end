@@ -2,6 +2,7 @@ import logging
 from uuid import UUID
 
 from app.models.company_action import ActionType
+from app.models.company_member import CompanyMemberRole
 from app.schemas.company_action import ActionsListResponse, ActionResponse
 
 from app.utils.uow import UnitOfWork
@@ -16,6 +17,7 @@ from app.core.exceptions import (
     CannotRequestYourselfException,
     RequestNotFoundException,
 )
+from app.services.utils import add_company_member
 
 logger = logging.getLogger(__name__)
 
@@ -185,8 +187,8 @@ class CompanyActionService:
         await self._check_user_is_not_member(company_id, user_id)
 
         await self.uow.company_actions.delete(action)
-        await self.uow.company_members.create(
-            {"company_id": company_id, "user_id": user_id}
+        await add_company_member(
+            self.uow, company_id, user_id, CompanyMemberRole.MEMBER
         )
 
     async def _remove_action_in_db(

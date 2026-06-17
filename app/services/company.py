@@ -1,6 +1,7 @@
 import logging
 from uuid import UUID
 
+from app.models.company_member import CompanyMemberRole
 from app.schemas.company import (
     CompanyUpdate,
     CompanyDetailResponse,
@@ -8,7 +9,7 @@ from app.schemas.company import (
     CompanyCreate,
     CompanyVisibilityUpdate,
 )
-from app.services.utils import check_company_owner
+from app.services.utils import check_company_owner, add_company_member
 from app.utils.uow import UnitOfWork
 from app.core.exceptions import (
     CompanyNotFoundException,
@@ -54,8 +55,8 @@ class CompanyService:
             db_company_data["owner_id"] = user_id
 
             new_company = await self.uow.companies.create(db_company_data)
-            await self.uow.company_members.create(
-                {"company_id": new_company.id, "user_id": user_id}
+            await add_company_member(
+                self.uow, new_company.id, user_id, CompanyMemberRole.OWNER
             )
 
             logger.info(f"Successfully created company: {company_data.name}")

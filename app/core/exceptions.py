@@ -130,3 +130,18 @@ class CannotKickYourselfException(HTTPException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="You cannot kick yourself from the company.",
         )
+
+
+class UserAlreadyAdminException(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=409, detail="User is already an admin.")
+
+
+class UserNotAdminException(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=409, detail="User is not an admin.")
+
+
+class CannotChangeOwnerRoleException(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=403, detail="Cannot change owner's role.")
