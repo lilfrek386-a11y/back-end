@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
+from app.models.company_member import CompanyMemberRole
 from app.services.company import CompanyService
 from app.schemas.company import CompanyCreate, CompanyUpdate
 from app.core.exceptions import (
@@ -42,7 +43,13 @@ async def test_create_new_company_success(company_service, mock_uow):
     result = await company_service.create_new_company(company_data, user_id)
 
     mock_uow.companies.create.assert_awaited_once()
-    mock_uow.company_members.create.assert_awaited_once()
+    mock_uow.company_members.create.assert_awaited_once_with(
+        {
+            "company_id": mock_db_company.id,
+            "user_id": user_id,
+            "role": CompanyMemberRole.OWNER,
+        }
+    )
     assert result.name == "Test Corp"
 
 

@@ -8,17 +8,17 @@ from fastapi.security import OAuth2PasswordBearer
 from app.core.config import settings
 from app.dependencies.uow import get_uow
 from app.models.user import User
-from app.services.auth import AuthService
+from app.services.auth import AuthService as AuthServiceClass
 from app.utils.uow import UnitOfWork
 from app.core.exceptions import IncorrectCredentialsException
 
 from app.core.security import verify_auth0_token
 
 
-async def get_auth_service(uow: UnitOfWork = Depends(get_uow)) -> AuthService:
+async def get_auth_service(uow: UnitOfWork = Depends(get_uow)) -> AuthServiceClass:
     from app.services.user import UserService
 
-    return AuthService(uow=uow, user_service=UserService(uow=uow))
+    return AuthServiceClass(uow=uow, user_service=UserService(uow=uow))
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -62,4 +62,4 @@ async def get_current_user(
 
 
 type CurrentUser = Annotated[User, Depends(get_current_user)]
-type AuthService = Annotated[AuthService, Depends(get_auth_service)]
+type AuthService = Annotated[AuthServiceClass, Depends(get_auth_service)]

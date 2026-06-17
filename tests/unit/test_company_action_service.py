@@ -2,6 +2,7 @@ import pytest
 from uuid import uuid4
 from unittest.mock import AsyncMock
 
+from app.models.company_member import CompanyMemberRole
 from app.services.company_action import CompanyActionService
 from app.models.company_action import ActionType, CompanyAction
 from app.models.user import User
@@ -97,5 +98,9 @@ async def test_accept_invitation_success(action_service, mock_uow, base_uuids):
 
     mock_uow.company_actions.delete.assert_awaited_once_with(mock_action)
     mock_uow.company_members.create.assert_awaited_once_with(
-        {"company_id": company_id, "user_id": user_id}
+        {
+            "company_id": company_id,
+            "user_id": user_id,
+            "role": CompanyMemberRole.MEMBER,
+        }
     )
