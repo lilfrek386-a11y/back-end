@@ -1,6 +1,7 @@
 import logging
 from uuid import UUID
 from app.models import Company
+from app.models.company_member import CompanyMemberRole, CompanyMember
 from app.utils.uow import UnitOfWork
 from app.core.exceptions import CompanyNotFoundException, NotOwnerException
 
@@ -24,3 +25,18 @@ async def check_company_owner(
         raise NotOwnerException()
 
     return company
+
+
+async def add_company_member(
+    uow: UnitOfWork,
+    company_id: UUID,
+    user_id: UUID,
+    role: CompanyMemberRole = CompanyMemberRole.MEMBER,
+) -> CompanyMember:
+    return await uow.company_members.create(
+        {
+            "company_id": company_id,
+            "user_id": user_id,
+            "role": role,
+        }
+    )
