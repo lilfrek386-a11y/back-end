@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 class Company(Base, UUIDMixin, TimestampMixin):
     __tablename__ = "companies"
 
-    name: Mapped[str] = mapped_column(String(50), index=True)
+    name: Mapped[str] = mapped_column(String(50), unique=True, nullable=False)
     description: Mapped[str | None] = mapped_column(String(), nullable=True)
     is_visible: Mapped[bool] = mapped_column(default=False, server_default=false())
     owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
