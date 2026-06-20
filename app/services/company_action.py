@@ -16,7 +16,6 @@ from app.core.exceptions import (
     CannotRequestYourselfException,
     RequestNotFoundException,
 )
-from app.services.utils import check_company_owner
 
 logger = logging.getLogger(__name__)
 
@@ -35,17 +34,6 @@ class CompanyActionService:
             actions_list = [ActionResponse.model_validate(a) for a in actions]
             return ActionsListResponse(actions=actions_list, total_count=total_count)
 
-    async def get_company_requests(
-        self, owner_id: UUID, company_id: UUID, skip: int = 0, limit: int = 100
-    ) -> ActionsListResponse:
-        async with self.uow:
-            await check_company_owner(self.uow, company_id, owner_id)
-            requests, total_count = await self.uow.company_actions.get_company_requests(
-                company_id, skip, limit
-            )
-            requests_list = [ActionResponse.model_validate(a) for a in requests]
-            return ActionsListResponse(actions=requests_list, total_count=total_count)
-
     async def get_user_requests(
         self, user_id: UUID, skip: int = 0, limit: int = 100
     ) -> ActionsListResponse:
@@ -56,11 +44,20 @@ class CompanyActionService:
             requests_list = [ActionResponse.model_validate(a) for a in requests]
             return ActionsListResponse(actions=requests_list, total_count=total_count)
 
-    async def get_company_invitations(
-        self, owner_id: UUID, company_id: UUID, skip: int = 0, limit: int = 100
+    async def get_company_requests(
+        self, company_id: UUID, skip: int = 0, limit: int = 100
     ) -> ActionsListResponse:
         async with self.uow:
-            await check_company_owner(self.uow, company_id, owner_id)
+            requests, total_count = await self.uow.company_actions.get_company_requests(
+                company_id, skip, limit
+            )
+            requests_list = [ActionResponse.model_validate(a) for a in requests]
+            return ActionsListResponse(actions=requests_list, total_count=total_count)
+
+    async def get_company_invitations(
+        self, company_id: UUID, skip: int = 0, limit: int = 100
+    ) -> ActionsListResponse:
+        async with self.uow:
             actions, total_count = (
                 await self.uow.company_actions.get_company_invitations(
                     company_id, skip, limit
@@ -70,14 +67,12 @@ class CompanyActionService:
             return ActionsListResponse(actions=actions_list, total_count=total_count)
 
     async def send_invitation(
-        self, owner_id: UUID, company_id: UUID, invited_user_id: UUID
+        self, company_id: UUID, invited_user_id: UUID, owner_id: UUID
     ) -> None:
         if owner_id == invited_user_id:
             raise CannotInviteYourselfException()
 
         async with self.uow:
-            await check_company_owner(self.uow, company_id, owner_id)
-
             user = await self.uow.users.get_one(invited_user_id)
             if not user:
                 raise UserNotFoundException()
@@ -98,11 +93,8 @@ class CompanyActionService:
                 }
             )
 
-    async def cancel_invitation(
-        self, owner_id: UUID, company_id: UUID, canceled_user_id: UUID
-    ) -> None:
+    async def cancel_invitation(self, company_id: UUID, canceled_user_id: UUID) -> None:
         async with self.uow:
-            await check_company_owner(self.uow, company_id, owner_id)
             await self._remove_action_in_db(
                 company_id, canceled_user_id, ActionType.INVITATION
             )
@@ -144,20 +136,14 @@ class CompanyActionService:
         async with self.uow:
             await self._remove_action_in_db(company_id, user_id, ActionType.REQUEST)
 
-    async def accept_request(
-        self, owner_id: UUID, company_id: UUID, requester_id: UUID
-    ) -> None:
+    async def accept_request(self, company_id: UUID, requester_id: UUID) -> None:
         async with self.uow:
-            await check_company_owner(self.uow, company_id, owner_id)
             await self._approve_action_in_db(
                 company_id, requester_id, ActionType.REQUEST
             )
 
-    async def decline_request(
-        self, owner_id: UUID, company_id: UUID, requester_id: UUID
-    ) -> None:
+    async def decline_request(self, company_id: UUID, requester_id: UUID) -> None:
         async with self.uow:
-            await check_company_owner(self.uow, company_id, owner_id)
             await self._remove_action_in_db(
                 company_id, requester_id, ActionType.REQUEST
             )
