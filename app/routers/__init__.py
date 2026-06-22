@@ -4,6 +4,9 @@ __all__ = [
     "auth_router",
     "company_router",
     "company_members_router",
+    "user_actions_router",
+    "owner_actions_router",
+    "quiz_router",
 ]
 
 from .user import router as user_router
@@ -13,3 +16,4 @@ from .company import router as company_router
 from .company_members import router as company_members_router
 from .user_actions import router as user_actions_router
 from .owner_actions import router as owner_actions_router
+from .quiz import router as quiz_router
