@@ -134,14 +134,34 @@ class CannotKickYourselfException(HTTPException):
 
 class UserAlreadyAdminException(HTTPException):
     def __init__(self):
-        super().__init__(status_code=409, detail="User is already an admin.")
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT, detail="User is already an admin."
+        )
 
 
 class UserNotAdminException(HTTPException):
     def __init__(self):
-        super().__init__(status_code=409, detail="User is not an admin.")
+        super().__init__(
+            status_code=status.HTTP_409_CONFLICT, detail="User is not an admin."
+        )
 
 
 class CannotChangeOwnerRoleException(HTTPException):
     def __init__(self):
-        super().__init__(status_code=403, detail="Cannot change owner's role.")
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Cannot change owner's role."
+        )
+
+
+class QuizNotFoundException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Quiz not found."
+        )
+
+
+class NotEnoughPermissionsException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+        )
