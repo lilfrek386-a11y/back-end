@@ -9,6 +9,7 @@ from app.models.mixins import TimestampMixin, UUIDMixin
 if TYPE_CHECKING:
     from app.models.user import User
     from app.models.company_action import CompanyAction
+    from app.models.quiz import Quiz
 
 
 class Company(Base, UUIDMixin, TimestampMixin):
@@ -25,6 +26,10 @@ class Company(Base, UUIDMixin, TimestampMixin):
     )
     actions: Mapped[list["CompanyAction"]] = relationship(
         back_populates="company", cascade="all, delete-orphan", passive_deletes=True
+    )
+
+    quizzes: Mapped[list["Quiz"]] = relationship(
+        back_populates="company", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
