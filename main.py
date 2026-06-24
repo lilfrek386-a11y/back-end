@@ -14,6 +14,7 @@ from app.routers import (
     user_actions_router,
     owner_actions_router,
     quiz_router,
+    quiz_attempt_router,
 )
 from app.core.logger import setup_logging
 
@@ -76,3 +77,4 @@ app.include_router(company_members_router)
 app.include_router(user_actions_router)
 app.include_router(owner_actions_router)
 app.include_router(quiz_router)
+app.include_router(quiz_attempt_router)
