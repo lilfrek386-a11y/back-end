@@ -10,6 +10,7 @@ from app.models.mixins import UUIDMixin, TimestampMixin
 if TYPE_CHECKING:
     from app.models.question import Question
     from app.models.company import Company
+    from app.models.quiz_attempt import QuizAttempt
 
 
 class Quiz(Base, UUIDMixin, TimestampMixin):
@@ -23,6 +24,10 @@ class Quiz(Base, UUIDMixin, TimestampMixin):
     )
 
     questions: Mapped[list["Question"]] = relationship(
+        back_populates="quiz", cascade="all, delete-orphan"
+    )
+
+    attempts: Mapped[list["QuizAttempt"]] = relationship(
         back_populates="quiz", cascade="all, delete-orphan"
     )
 

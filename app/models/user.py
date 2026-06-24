@@ -8,6 +8,7 @@ from app.models.mixins import TimestampMixin, UUIDMixin
 if TYPE_CHECKING:
     from app.models.company import Company
     from app.models.company_action import CompanyAction
+    from app.models.quiz_attempt import QuizAttempt
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -27,6 +28,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     )
     joined_companies: Mapped[list["Company"]] = relationship(
         secondary="company_members", back_populates="members"
+    )
+    quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:

@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from app.models.user import User
     from app.models.company_action import CompanyAction
     from app.models.quiz import Quiz
+    from app.models.quiz_attempt import QuizAttempt
 
 
 class Company(Base, UUIDMixin, TimestampMixin):
@@ -29,6 +30,9 @@ class Company(Base, UUIDMixin, TimestampMixin):
     )
 
     quizzes: Mapped[list["Quiz"]] = relationship(
+        back_populates="company", cascade="all, delete-orphan"
+    )
+    quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(
         back_populates="company", cascade="all, delete-orphan"
     )
 
