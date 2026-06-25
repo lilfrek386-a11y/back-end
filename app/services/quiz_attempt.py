@@ -2,6 +2,8 @@ import logging
 from uuid import UUID
 
 from app.schemas.quiz_attempt import QuizSubmission, QuizAttemptResponse
+from app.schemas.redis import RedisQuizAttemptDetail, QuestionDetail
+from app.services.redis import RedisService
 from app.utils.uow import UnitOfWork
 from app.core.exceptions import QuizNotFoundException, NotEnoughPermissionsException
 
@@ -9,15 +11,15 @@ logger = logging.getLogger(__name__)
 
 
 class QuizAttemptService:
-    def __init__(self, uow: UnitOfWork):
+
+    def __init__(self, uow: UnitOfWork, redis_service: RedisService):
         self.uow = uow
+        self.redis_service = redis_service
 
     async def submit_test(
         self, user_id: UUID, quiz_id: UUID, submission: QuizSubmission
     ) -> QuizAttemptResponse:
-        logger.info(
-            f"Attempting to submit test for quiz ID: {quiz_id} by user ID: {user_id}"
-        )
+
         async with self.uow:
             quiz = await self.uow.quizzes.get_quiz_with_details(quiz_id)
             if not quiz:
@@ -39,14 +41,26 @@ class QuizAttemptService:
                 for answer in submission.answers
             }
 
+            redis_answers_detail = []
+
             for question in quiz.questions:
                 correct_option_ids = {
                     option.id for option in question.answer_options if option.is_correct
                 }
                 user_selected_ids = submitted_answers_map.get(question.id, set())
 
-                if correct_option_ids == user_selected_ids:
+                is_correct = correct_option_ids == user_selected_ids
+
+                if is_correct:
                     correct_answers_count += 1
+
+                redis_answers_detail.append(
+                    QuestionDetail(
+                        question_id=question.id,
+                        selected_option_ids=list(user_selected_ids),
+                        is_correct=is_correct,
+                    )
+                )
 
             quiz.participation_frequency += 1
 
@@ -60,9 +74,18 @@ class QuizAttemptService:
 
             quiz_attempt = await self.uow.quiz_attempts.create(attempt_data)
 
+            redis_payload = RedisQuizAttemptDetail(
+                attempt_id=quiz_attempt.id,
+                user_id=user_id,
+                company_id=quiz.company_id,
+                quiz_id=quiz_id,
+                answers=redis_answers_detail,
+            )
+            await self.redis_service.save_quiz_attempt_details(redis_payload)
+
             logger.info(
-                f"Successfully submitted test for quiz ID: {quiz_id} by user ID: {user_id}. "
-                f"Score: {correct_answers_count}/{total_questions_count}"
+                f"[AUDIT] User {user_id} completed Quiz {quiz_id} "
+                f"(Attempt ID: {quiz_attempt.id}). Score: {correct_answers_count}/{total_questions_count}"
             )
             return QuizAttemptResponse.model_validate(quiz_attempt)
 
