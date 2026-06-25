@@ -18,7 +18,7 @@ class DatabaseConfig(BaseSettings):
 class RedisConfig(BaseSettings):
     HOST: str
     PORT: int
-
+    TTL_SECONDS: int
     model_config = SettingsConfigDict(
         env_file=".env", env_prefix="REDIS_", extra="ignore"
     )

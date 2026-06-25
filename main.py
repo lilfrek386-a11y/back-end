@@ -1,10 +1,13 @@
 import time
 import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.core.redis import init_redis, close_redis
 from app.routers import (
     user_router,
     health_router,
@@ -21,7 +24,15 @@ from app.core.logger import setup_logging
 setup_logging()
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Backend API")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_redis()
+    yield
+    await close_redis()
+
+
+app = FastAPI(title="Backend API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
