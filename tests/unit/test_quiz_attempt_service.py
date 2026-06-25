@@ -7,10 +7,19 @@ from app.services.quiz_attempt import QuizAttemptService
 from app.schemas.quiz_attempt import QuizSubmission, UserAnswerSubmit
 from app.core.exceptions import QuizNotFoundException
 
+from app.schemas.redis import RedisQuizAttemptDetail
+
 
 @pytest.fixture
-def attempt_service(mock_uow):
-    return QuizAttemptService(mock_uow)
+def mock_redis_service():
+    service = MagicMock()
+    service.save_quiz_attempt_details = AsyncMock()
+    return service
+
+
+@pytest.fixture
+def attempt_service(mock_uow, mock_redis_service):
+    return QuizAttemptService(mock_uow, mock_redis_service)
 
 
 @pytest.fixture
@@ -29,7 +38,9 @@ def test_data():
 
 
 @pytest.mark.asyncio
-async def test_submit_test_success(attempt_service, mock_uow, test_data):
+async def test_submit_test_success(
+    attempt_service, mock_uow, test_data, mock_redis_service
+):
     user_id = test_data["user_id"]
     quiz_id = test_data["quiz_id"]
     company_id = test_data["company_id"]
@@ -72,8 +83,9 @@ async def test_submit_test_success(attempt_service, mock_uow, test_data):
         ]
     )
 
+    attempt_id = uuid4()
     mock_attempt = MagicMock()
-    mock_attempt.id = uuid4()
+    mock_attempt.id = attempt_id
     mock_attempt.user_id = user_id
     mock_attempt.quiz_id = quiz_id
     mock_attempt.company_id = company_id
@@ -89,8 +101,17 @@ async def test_submit_test_success(attempt_service, mock_uow, test_data):
 
     mock_uow.quiz_attempts.create.assert_awaited_once()
     assert result.correct_answers_count == 1
-
     assert mock_quiz.participation_frequency == 1
+
+    mock_redis_service.save_quiz_attempt_details.assert_awaited_once()
+
+    redis_payload = mock_redis_service.save_quiz_attempt_details.call_args[0][0]
+    assert isinstance(redis_payload, RedisQuizAttemptDetail)
+    assert redis_payload.attempt_id == attempt_id
+    assert len(redis_payload.answers) == 2
+
+    assert redis_payload.answers[0].is_correct is True
+    assert redis_payload.answers[1].is_correct is False
 
 
 @pytest.mark.asyncio
