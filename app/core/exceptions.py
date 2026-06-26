@@ -165,3 +165,11 @@ class NotEnoughPermissionsException(HTTPException):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
+
+
+class UnsupportedExportFormatException(HTTPException):
+    def __init__(self, format_name: str):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported export format: {format_name}. Allowed: 'json', 'csv'",
+        )
