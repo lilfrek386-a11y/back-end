@@ -16,7 +16,7 @@ def mock_redis_client():
 
 @pytest.fixture
 def redis_service(mock_redis_client):
-    return RedisService(redis=mock_redis_client, ttl_seconds=172800)
+    return RedisService(redis_client=mock_redis_client, ttl_seconds=172800)
 
 
 @pytest.fixture
@@ -53,7 +53,9 @@ async def test_save_quiz_attempt_details_custom_ttl(
     mock_redis_client, valid_quiz_details
 ):
     custom_ttl = 3600
-    custom_service = RedisService(redis=mock_redis_client, ttl_seconds=custom_ttl)
+    custom_service = RedisService(
+        redis_client=mock_redis_client, ttl_seconds=custom_ttl
+    )
 
     await custom_service.save_quiz_attempt_details(valid_quiz_details)
 
