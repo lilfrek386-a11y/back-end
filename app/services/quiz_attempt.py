@@ -84,6 +84,7 @@ class QuizAttemptService:
                 user_id=user_id,
                 company_id=quiz.company_id,
                 quiz_id=quiz_id,
+                created_at=quiz_attempt.created_at,
                 answers=redis_answers_detail,
             )
 
@@ -114,6 +115,11 @@ class QuizAttemptService:
     ) -> list[RedisQuizAttemptDetail] | str:
 
         async with self.uow:
+            if company_id is not None and quiz_id is not None:
+                quiz = await self.uow.quizzes.get_one(quiz_id)
+                if not quiz or quiz.company_id != company_id:
+                    raise QuizNotFoundException()
+
             attempt_ids: list[UUID] = (
                 await self.uow.quiz_attempts.get_attempt_ids_for_export(
                     user_id=user_id,
@@ -133,16 +139,37 @@ class QuizAttemptService:
             return attempts_data
 
         if export_format == "csv":
+            question_ids = {
+                a.question_id for attempt in attempts_data for a in attempt.answers
+            }
+            option_ids = {
+                opt
+                for attempt in attempts_data
+                for a in attempt.answers
+                for opt in a.selected_option_ids
+            }
+            user_ids = {attempt.user_id for attempt in attempts_data}
+            quiz_ids = {attempt.quiz_id for attempt in attempts_data}
+            company_ids = {attempt.company_id for attempt in attempts_data}
+
+            async with self.uow:
+                questions_map = await self.uow.questions.get_texts_by_ids(question_ids)
+                options_map = await self.uow.answer_options.get_texts_by_ids(option_ids)
+                users_map = await self.uow.users.get_emails_by_ids(user_ids)
+                quizzes_map = await self.uow.quizzes.get_titles_by_ids(quiz_ids)
+                companies_map = await self.uow.companies.get_names_by_ids(company_ids)
+
             output = io.StringIO()
+            output.write("\ufeff")
             writer = csv.writer(output)
             writer.writerow(
                 [
-                    "Attempt ID",
-                    "User ID",
-                    "Company ID",
-                    "Quiz ID",
-                    "Question ID",
-                    "Selected Options",
+                    "Date",
+                    "User Email",
+                    "Company Name",
+                    "Quiz Title",
+                    "Question",
+                    "Selected Answer",
                     "Is Correct",
                 ]
             )
@@ -151,12 +178,19 @@ class QuizAttemptService:
                 for answer in attempt.answers:
                     writer.writerow(
                         [
-                            str(attempt.attempt_id),
-                            str(attempt.user_id),
-                            str(attempt.company_id),
-                            str(attempt.quiz_id),
-                            str(answer.question_id),
-                            " | ".join(map(str, answer.selected_option_ids)),
+                            attempt.created_at.strftime("%Y-%m-%d %H:%M:%S"),
+                            users_map.get(attempt.user_id, str(attempt.user_id)),
+                            companies_map.get(
+                                attempt.company_id, str(attempt.company_id)
+                            ),
+                            quizzes_map.get(attempt.quiz_id, str(attempt.quiz_id)),
+                            questions_map.get(
+                                answer.question_id, str(answer.question_id)
+                            ),
+                            " | ".join(
+                                options_map.get(opt, str(opt))
+                                for opt in answer.selected_option_ids
+                            ),
                             answer.is_correct,
                         ]
                     )
