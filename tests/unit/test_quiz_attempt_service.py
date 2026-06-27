@@ -198,6 +198,7 @@ async def test_export_attempts_json_success(
         user_id=user_id,
         company_id=test_data["company_id"],
         quiz_id=test_data["quiz_id"],
+        created_at=datetime.now(timezone.utc),
         answers=[],
     )
     mock_redis_service.get_quiz_attempts_details = AsyncMock(
@@ -234,6 +235,7 @@ async def test_export_attempts_csv_success(
         user_id=user_id,
         company_id=test_data["company_id"],
         quiz_id=test_data["quiz_id"],
+        created_at=datetime.now(timezone.utc),
         answers=[
             QuestionDetail(
                 question_id=test_data["q1_id"],
@@ -246,16 +248,34 @@ async def test_export_attempts_csv_success(
         return_value=[mock_redis_data]
     )
 
+    mock_uow.questions.get_texts_by_ids = AsyncMock(
+        return_value={test_data["q1_id"]: "Question 1"}
+    )
+    mock_uow.answer_options.get_texts_by_ids = AsyncMock(
+        return_value={option_id: "Correct option"}
+    )
+    mock_uow.users.get_emails_by_ids = AsyncMock(
+        return_value={user_id: "user@example.com"}
+    )
+    mock_uow.quizzes.get_titles_by_ids = AsyncMock(
+        return_value={test_data["quiz_id"]: "Quiz Title"}
+    )
+    mock_uow.companies.get_names_by_ids = AsyncMock(
+        return_value={test_data["company_id"]: "Company Name"}
+    )
+
     result = await attempt_service.export_attempts(export_format="csv", user_id=user_id)
 
     assert isinstance(result, str)
     assert (
-        "Attempt ID,User ID,Company ID,Quiz ID,Question ID,Selected Options,Is Correct"
+        "Date,User Email,Company Name,Quiz Title,Question,Selected Answer,Is Correct"
         in result
     )
-    assert str(attempt_id) in result
-    assert str(user_id) in result
-    assert str(option_id) in result
+    assert "user@example.com" in result
+    assert "Company Name" in result
+    assert "Quiz Title" in result
+    assert "Question 1" in result
+    assert "Correct option" in result
     assert "True" in result
 
 
@@ -293,3 +313,116 @@ async def test_export_attempts_unsupported_format(
 
     with pytest.raises(UnsupportedExportFormatException):
         await attempt_service.export_attempts(export_format="pdf", user_id=user_id)
+
+
+@pytest.mark.asyncio
+async def test_export_attempts_quiz_not_in_company_raises(
+    attempt_service, mock_uow, test_data, mock_redis_service
+):
+    company_id = test_data["company_id"]
+    quiz_id = test_data["quiz_id"]
+    foreign_company_id = uuid4()
+
+    mock_quiz = MagicMock()
+    mock_quiz.id = quiz_id
+    mock_quiz.company_id = foreign_company_id
+
+    mock_uow.quizzes.get_one = AsyncMock(return_value=mock_quiz)
+    mock_uow.quiz_attempts.get_attempt_ids_for_export = AsyncMock()
+
+    with pytest.raises(QuizNotFoundException):
+        await attempt_service.export_attempts(
+            export_format="json",
+            company_id=company_id,
+            quiz_id=quiz_id,
+        )
+
+    mock_uow.quiz_attempts.get_attempt_ids_for_export.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_export_attempts_quiz_does_not_exist_raises(
+    attempt_service, mock_uow, test_data
+):
+    company_id = test_data["company_id"]
+    quiz_id = uuid4()
+
+    mock_uow.quizzes.get_one = AsyncMock(return_value=None)
+    mock_uow.quiz_attempts.get_attempt_ids_for_export = AsyncMock()
+
+    with pytest.raises(QuizNotFoundException):
+        await attempt_service.export_attempts(
+            export_format="json",
+            company_id=company_id,
+            quiz_id=quiz_id,
+        )
+
+    mock_uow.quiz_attempts.get_attempt_ids_for_export.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_export_attempts_quiz_in_company_succeeds(
+    attempt_service, mock_uow, test_data, mock_redis_service
+):
+    company_id = test_data["company_id"]
+    quiz_id = test_data["quiz_id"]
+
+    mock_quiz = MagicMock()
+    mock_quiz.id = quiz_id
+    mock_quiz.company_id = company_id  # matches
+
+    mock_uow.quizzes.get_one = AsyncMock(return_value=mock_quiz)
+    mock_uow.quiz_attempts.get_attempt_ids_for_export = AsyncMock(return_value=[])
+    mock_redis_service.get_quiz_attempts_details = AsyncMock()
+
+    result = await attempt_service.export_attempts(
+        export_format="json",
+        company_id=company_id,
+        quiz_id=quiz_id,
+    )
+
+    assert result == []
+    mock_uow.quiz_attempts.get_attempt_ids_for_export.assert_awaited_once_with(
+        user_id=None, company_id=company_id, quiz_id=quiz_id
+    )
+
+
+@pytest.mark.asyncio
+async def test_export_attempts_csv_contains_bom(
+    attempt_service, mock_uow, test_data, mock_redis_service
+):
+    user_id = test_data["user_id"]
+    attempt_id = uuid4()
+
+    mock_uow.quiz_attempts.get_attempt_ids_for_export = AsyncMock(
+        return_value=[attempt_id]
+    )
+
+    mock_redis_data = RedisQuizAttemptDetail(
+        attempt_id=attempt_id,
+        user_id=user_id,
+        company_id=test_data["company_id"],
+        quiz_id=test_data["quiz_id"],
+        created_at=datetime.now(timezone.utc),
+        answers=[
+            QuestionDetail(
+                question_id=test_data["q1_id"],
+                selected_option_ids=[test_data["q1_correct_opt"]],
+                is_correct=True,
+            )
+        ],
+    )
+    mock_redis_service.get_quiz_attempts_details = AsyncMock(
+        return_value=[mock_redis_data]
+    )
+
+    mock_uow.questions.get_texts_by_ids = AsyncMock(return_value={})
+    mock_uow.answer_options.get_texts_by_ids = AsyncMock(return_value={})
+    mock_uow.users.get_emails_by_ids = AsyncMock(return_value={})
+    mock_uow.quizzes.get_titles_by_ids = AsyncMock(return_value={})
+    mock_uow.companies.get_names_by_ids = AsyncMock(return_value={})
+
+    result = await attempt_service.export_attempts(export_format="csv", user_id=user_id)
+
+    assert result.startswith("\ufeff")
+    assert "Date,User Email,Company Name,Quiz Title" in result
