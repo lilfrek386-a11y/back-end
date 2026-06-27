@@ -1,3 +1,5 @@
+import csv
+import io
 import logging
 from uuid import UUID
 
@@ -5,7 +7,11 @@ from app.schemas.quiz_attempt import QuizSubmission, QuizAttemptResponse
 from app.schemas.redis import RedisQuizAttemptDetail, QuestionDetail
 from app.services.redis import RedisService
 from app.utils.uow import UnitOfWork
-from app.core.exceptions import QuizNotFoundException, NotEnoughPermissionsException
+from app.core.exceptions import (
+    QuizNotFoundException,
+    NotEnoughPermissionsException,
+    UnsupportedExportFormatException,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +54,6 @@ class QuizAttemptService:
                     option.id for option in question.answer_options if option.is_correct
                 }
                 user_selected_ids = submitted_answers_map.get(question.id, set())
-
                 is_correct = correct_option_ids == user_selected_ids
 
                 if is_correct:
@@ -81,13 +86,14 @@ class QuizAttemptService:
                 quiz_id=quiz_id,
                 answers=redis_answers_detail,
             )
-            await self.redis_service.save_quiz_attempt_details(redis_payload)
 
-            logger.info(
-                f"[AUDIT] User {user_id} completed Quiz {quiz_id} "
-                f"(Attempt ID: {quiz_attempt.id}). Score: {correct_answers_count}/{total_questions_count}"
-            )
-            return QuizAttemptResponse.model_validate(quiz_attempt)
+        await self.redis_service.save_quiz_attempt_details(redis_payload)
+
+        logger.info(
+            f"[AUDIT] User {user_id} completed Quiz {quiz_id} "
+            f"(Attempt ID: {quiz_attempt.id}). Score: {correct_answers_count}/{total_questions_count}"
+        )
+        return QuizAttemptResponse.model_validate(quiz_attempt)
 
     async def get_user_system_average(self, user_id: UUID) -> float:
         async with self.uow:
@@ -98,3 +104,63 @@ class QuizAttemptService:
             return await self.uow.quiz_attempts.get_average_score(
                 user_id=user_id, company_id=company_id
             )
+
+    async def export_attempts(
+        self,
+        export_format: str,
+        user_id: UUID | None = None,
+        company_id: UUID | None = None,
+        quiz_id: UUID | None = None,
+    ) -> list[RedisQuizAttemptDetail] | str:
+
+        async with self.uow:
+            attempt_ids: list[UUID] = (
+                await self.uow.quiz_attempts.get_attempt_ids_for_export(
+                    user_id=user_id,
+                    company_id=company_id,
+                    quiz_id=quiz_id,
+                )
+            )
+
+        if not attempt_ids:
+            return [] if export_format == "json" else ""
+
+        attempts_data: list[RedisQuizAttemptDetail] = (
+            await self.redis_service.get_quiz_attempts_details(attempt_ids=attempt_ids)
+        )
+
+        if export_format == "json":
+            return attempts_data
+
+        if export_format == "csv":
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(
+                [
+                    "Attempt ID",
+                    "User ID",
+                    "Company ID",
+                    "Quiz ID",
+                    "Question ID",
+                    "Selected Options",
+                    "Is Correct",
+                ]
+            )
+
+            for attempt in attempts_data:
+                for answer in attempt.answers:
+                    writer.writerow(
+                        [
+                            str(attempt.attempt_id),
+                            str(attempt.user_id),
+                            str(attempt.company_id),
+                            str(attempt.quiz_id),
+                            str(answer.question_id),
+                            " | ".join(map(str, answer.selected_option_ids)),
+                            answer.is_correct,
+                        ]
+                    )
+
+            return output.getvalue()
+
+        raise UnsupportedExportFormatException(export_format)
