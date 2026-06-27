@@ -5,9 +5,9 @@ from datetime import datetime, timezone
 
 from app.services.quiz_attempt import QuizAttemptService
 from app.schemas.quiz_attempt import QuizSubmission, UserAnswerSubmit
-from app.core.exceptions import QuizNotFoundException
+from app.core.exceptions import QuizNotFoundException, UnsupportedExportFormatException
 
-from app.schemas.redis import RedisQuizAttemptDetail
+from app.schemas.redis import RedisQuizAttemptDetail, QuestionDetail
 
 
 @pytest.fixture
@@ -180,3 +180,116 @@ async def test_get_user_company_average(attempt_service, mock_uow, test_data):
         user_id=user_id, company_id=company_id
     )
     assert result == 0.90
+
+
+@pytest.mark.asyncio
+async def test_export_attempts_json_success(
+    attempt_service, mock_uow, test_data, mock_redis_service
+):
+    user_id = test_data["user_id"]
+    attempt_id = uuid4()
+
+    mock_uow.quiz_attempts.get_attempt_ids_for_export = AsyncMock(
+        return_value=[attempt_id]
+    )
+
+    mock_redis_data = RedisQuizAttemptDetail(
+        attempt_id=attempt_id,
+        user_id=user_id,
+        company_id=test_data["company_id"],
+        quiz_id=test_data["quiz_id"],
+        answers=[],
+    )
+    mock_redis_service.get_quiz_attempts_details = AsyncMock(
+        return_value=[mock_redis_data]
+    )
+
+    result = await attempt_service.export_attempts(
+        export_format="json", user_id=user_id
+    )
+
+    assert result == [mock_redis_data]
+    mock_uow.quiz_attempts.get_attempt_ids_for_export.assert_awaited_once_with(
+        user_id=user_id, company_id=None, quiz_id=None
+    )
+    mock_redis_service.get_quiz_attempts_details.assert_awaited_once_with(
+        attempt_ids=[attempt_id]
+    )
+
+
+@pytest.mark.asyncio
+async def test_export_attempts_csv_success(
+    attempt_service, mock_uow, test_data, mock_redis_service
+):
+    user_id = test_data["user_id"]
+    attempt_id = uuid4()
+    option_id = test_data["q1_correct_opt"]
+
+    mock_uow.quiz_attempts.get_attempt_ids_for_export = AsyncMock(
+        return_value=[attempt_id]
+    )
+
+    mock_redis_data = RedisQuizAttemptDetail(
+        attempt_id=attempt_id,
+        user_id=user_id,
+        company_id=test_data["company_id"],
+        quiz_id=test_data["quiz_id"],
+        answers=[
+            QuestionDetail(
+                question_id=test_data["q1_id"],
+                selected_option_ids=[option_id],
+                is_correct=True,
+            )
+        ],
+    )
+    mock_redis_service.get_quiz_attempts_details = AsyncMock(
+        return_value=[mock_redis_data]
+    )
+
+    result = await attempt_service.export_attempts(export_format="csv", user_id=user_id)
+
+    assert isinstance(result, str)
+    assert (
+        "Attempt ID,User ID,Company ID,Quiz ID,Question ID,Selected Options,Is Correct"
+        in result
+    )
+    assert str(attempt_id) in result
+    assert str(user_id) in result
+    assert str(option_id) in result
+    assert "True" in result
+
+
+@pytest.mark.asyncio
+async def test_export_attempts_empty_data(
+    attempt_service, mock_uow, test_data, mock_redis_service
+):
+    user_id = test_data["user_id"]
+
+    mock_uow.quiz_attempts.get_attempt_ids_for_export = AsyncMock(return_value=[])
+    mock_redis_service.get_quiz_attempts_details = AsyncMock()
+
+    result_json = await attempt_service.export_attempts(
+        export_format="json", user_id=user_id
+    )
+    result_csv = await attempt_service.export_attempts(
+        export_format="csv", user_id=user_id
+    )
+
+    assert result_json == []
+    assert result_csv == ""
+    mock_redis_service.get_quiz_attempts_details.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_export_attempts_unsupported_format(
+    attempt_service, mock_uow, test_data, mock_redis_service
+):
+    user_id = test_data["user_id"]
+
+    mock_uow.quiz_attempts.get_attempt_ids_for_export = AsyncMock(
+        return_value=[uuid4()]
+    )
+    mock_redis_service.get_quiz_attempts_details = AsyncMock(return_value=[])
+
+    with pytest.raises(UnsupportedExportFormatException):
+        await attempt_service.export_attempts(export_format="pdf", user_id=user_id)
