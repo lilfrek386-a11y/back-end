@@ -1,6 +1,8 @@
 import logging
 from uuid import UUID
 
+from fastapi import BackgroundTasks
+
 from app.schemas.quiz import (
     QuizCreate,
     QuizUpdate,
@@ -8,6 +10,7 @@ from app.schemas.quiz import (
     QuizzesResponseList,
     QuizListResponse,
 )
+from app.services.notification import send_quiz_notifications_bg
 from app.utils.uow import UnitOfWork
 from app.core.exceptions import (
     CompanyNotFoundException,
@@ -24,7 +27,11 @@ class QuizService:
         self.uow = uow
 
     async def create_quiz(
-        self, user_id: UUID, company_id: UUID, quiz_data: QuizCreate
+        self,
+        user_id: UUID,
+        company_id: UUID,
+        quiz_data: QuizCreate,
+        background_tasks: BackgroundTasks | None = None,
     ) -> QuizResponse:
         logger.info(
             f"Attempting to create new quiz: {quiz_data.title} in company {company_id}"
@@ -33,10 +40,17 @@ class QuizService:
             await check_company_admin_or_owner(self.uow, company_id, user_id)
 
             db_quiz_data = quiz_data.model_dump()
-
             new_quiz = await self.uow.quizzes.create_quiz(
                 data=db_quiz_data, company_id=company_id
             )
+
+            if background_tasks is not None:
+                background_tasks.add_task(
+                    send_quiz_notifications_bg,
+                    company_id=company_id,
+                    quiz_title=new_quiz.title,
+                    creator_id=user_id,
+                )
 
             logger.info(f"Successfully created quiz: {quiz_data.title}")
             return QuizResponse.model_validate(new_quiz)

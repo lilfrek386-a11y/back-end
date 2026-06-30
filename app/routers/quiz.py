@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, BackgroundTasks
 
 from app.schemas.quiz import (
     QuizCreate,
@@ -26,9 +26,13 @@ async def create_quiz(
     quiz_data: QuizCreate,
     current_user: CurrentUser,
     service: QuizService,
+    background_tasks: BackgroundTasks,
 ):
     return await service.create_quiz(
-        user_id=current_user.id, company_id=company_id, quiz_data=quiz_data
+        user_id=current_user.id,
+        company_id=company_id,
+        quiz_data=quiz_data,
+        background_tasks=background_tasks,
     )
 
 

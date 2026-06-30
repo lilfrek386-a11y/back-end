@@ -58,7 +58,10 @@ class QuizRepository(BaseRepository[Quiz]):
         self.db.add(db_quiz)
         await self.db.flush()
 
-        return await self.get_quiz_with_details(db_quiz.id)
+        created_quiz = await self.get_quiz_with_details(db_quiz.id)
+        if created_quiz is None:
+            raise RuntimeError("Quiz disappeared immediately after creation")
+        return created_quiz
 
     async def get_titles_by_ids(self, ids: set[UUID]) -> dict[UUID, str]:
         stmt = select(Quiz.id, Quiz.title).where(Quiz.id.in_(ids))

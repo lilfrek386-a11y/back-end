@@ -9,6 +9,7 @@ __all__ = [
     "quiz_router",
     "quiz_attempt_router",
     "analytics_router",
+    "notification_router"
 ]
 
 from .user import router as user_router
@@ -21,3 +22,4 @@ from .owner_actions import router as owner_actions_router
 from .quiz import router as quiz_router
 from .quiz_attempt import router as quiz_attempt_router
 from .analytics import router as analytics_router
+from .notification import router as notification_router

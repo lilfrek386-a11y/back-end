@@ -9,6 +9,7 @@ if TYPE_CHECKING:
     from app.models.company import Company
     from app.models.company_action import CompanyAction
     from app.models.quiz_attempt import QuizAttempt
+    from app.models.notification import Notification
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -30,6 +31,9 @@ class User(Base, UUIDMixin, TimestampMixin):
         secondary="company_members", back_populates="members"
     )
     quiz_attempts: Mapped[list["QuizAttempt"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    notifications: Mapped[list["Notification"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
 

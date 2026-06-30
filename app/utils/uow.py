@@ -3,6 +3,7 @@ from app.repositories.answer_option import AnswerOptionRepository
 from app.repositories.company import CompanyRepository
 from app.repositories.company_action import CompanyActionRepository
 from app.repositories.company_member import CompanyMemberRepository
+from app.repositories.notification import NotificationRepository
 from app.repositories.question import QuestionRepository
 from app.repositories.quiz import QuizRepository
 from app.repositories.quiz_attempt import QuizAttemptRepository
@@ -23,6 +24,7 @@ class UnitOfWork:
         self.quiz_attempts = QuizAttemptRepository(self.session)
         self.questions = QuestionRepository(self.session)
         self.answer_options = AnswerOptionRepository(self.session)
+        self.notifications = NotificationRepository(self.session)
         return self
 
     async def __aexit__(self, exc_type, exc_val, tb):

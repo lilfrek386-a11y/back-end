@@ -173,3 +173,9 @@ class UnsupportedExportFormatException(HTTPException):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Unsupported export format: {format_name}. Allowed: 'json', 'csv'",
         )
+
+
+class NotificationNotFoundException(Exception):
+    def __init__(self, detail: str = "Notification not found"):
+        self.detail = detail
+        super().__init__(detail)
