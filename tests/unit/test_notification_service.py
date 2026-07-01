@@ -137,7 +137,7 @@ async def test_mark_notification_as_read_wrong_owner_raises(
 
     mock_notification = MagicMock()
     mock_notification.id = notification_id
-    mock_notification.user_id = actual_owner_id  # belongs to someone else
+    mock_notification.user_id = actual_owner_id
 
     mock_uow.notifications.get_one = AsyncMock(return_value=mock_notification)
 
@@ -168,9 +168,21 @@ async def test_send_quiz_notifications_bg_notifies_all_members_except_creator(
     mock_uow.company_members.get_company_members = AsyncMock(
         return_value=([member_creator, member_1, member_2], 3)
     )
-    mock_uow.notifications.create = AsyncMock()
 
-    with patch("app.services.notification.UnitOfWork", return_value=mock_uow):
+    mock_notification = MagicMock()
+    mock_notification.id = uuid4()
+    mock_notification.created_at = datetime.now(timezone.utc)
+    mock_uow.notifications.create = AsyncMock(return_value=mock_notification)
+
+    with (
+        patch("app.services.notification.UnitOfWork", return_value=mock_uow),
+        patch("app.services.notification.get_redis_client") as mock_get_redis,
+    ):
+
+        mock_redis_instance = MagicMock()
+        mock_redis_instance.publish = AsyncMock()
+        mock_get_redis.return_value = mock_redis_instance
+
         await send_quiz_notifications_bg(
             company_id=company_id,
             quiz_title="Python Basics",
@@ -178,6 +190,7 @@ async def test_send_quiz_notifications_bg_notifies_all_members_except_creator(
         )
 
     assert mock_uow.notifications.create.await_count == 2
+    assert mock_redis_instance.publish.await_count == 2
 
     created_for = {
         call.args[0]["user_id"]
@@ -200,7 +213,15 @@ async def test_send_quiz_notifications_bg_no_members_creates_nothing(base_uuids)
     mock_uow.company_members.get_company_members = AsyncMock(return_value=([], 0))
     mock_uow.notifications.create = AsyncMock()
 
-    with patch("app.services.notification.UnitOfWork", return_value=mock_uow):
+    with (
+        patch("app.services.notification.UnitOfWork", return_value=mock_uow),
+        patch("app.services.notification.get_redis_client") as mock_get_redis,
+    ):
+
+        mock_redis_instance = MagicMock()
+        mock_redis_instance.publish = AsyncMock()
+        mock_get_redis.return_value = mock_redis_instance
+
         await send_quiz_notifications_bg(
             company_id=company_id,
             quiz_title="Empty Company Quiz",
@@ -208,6 +229,7 @@ async def test_send_quiz_notifications_bg_no_members_creates_nothing(base_uuids)
         )
 
     mock_uow.notifications.create.assert_not_called()
+    mock_redis_instance.publish.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -224,7 +246,15 @@ async def test_send_quiz_notifications_bg_only_creator_in_company(base_uuids):
     )
     mock_uow.notifications.create = AsyncMock()
 
-    with patch("app.services.notification.UnitOfWork", return_value=mock_uow):
+    with (
+        patch("app.services.notification.UnitOfWork", return_value=mock_uow),
+        patch("app.services.notification.get_redis_client") as mock_get_redis,
+    ):
+
+        mock_redis_instance = MagicMock()
+        mock_redis_instance.publish = AsyncMock()
+        mock_get_redis.return_value = mock_redis_instance
+
         await send_quiz_notifications_bg(
             company_id=company_id,
             quiz_title="Solo Quiz",
@@ -232,3 +262,4 @@ async def test_send_quiz_notifications_bg_only_creator_in_company(base_uuids):
         )
 
     mock_uow.notifications.create.assert_not_called()
+    mock_redis_instance.publish.assert_not_called()

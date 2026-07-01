@@ -1,11 +1,14 @@
+import asyncio
 from uuid import UUID
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, WebSocket, WebSocketDisconnect
 
-from app.dependencies.auth import CurrentUser
+from app.dependencies.auth import CurrentUser, get_current_user
 from app.dependencies.notification import NotificationService
 from app.dependencies.pagination import SkipQuery, LimitQuery
 from app.schemas.notification import NotificationListResponse, NotificationResponse
+from app.core.redis import get_redis_client
+from app.utils.uow import UnitOfWork
 
 router = APIRouter(tags=["Notifications"])
 
@@ -40,3 +43,44 @@ async def mark_notification_read(
         user_id=current_user.id,
         notification_id=notification_id,
     )
+
+
+@router.websocket("/ws/notifications")
+async def websocket_notifications(websocket: WebSocket):
+    await websocket.accept()
+
+    try:
+        auth_message = await asyncio.wait_for(websocket.receive_json(), timeout=10.0)
+        token = auth_message.get("token")
+        if not token:
+            raise ValueError("No token provided")
+
+        async with UnitOfWork() as uow:
+            user = await get_current_user(token=token, uow=uow)
+            user_id = user.id
+
+    except asyncio.TimeoutError:
+        await websocket.send_json({"detail": "Authentication timeout"})
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+    except Exception:
+        await websocket.send_json({"detail": "Incorrect credentials"})
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    await websocket.send_json({"detail": "Connected"})
+
+    redis = get_redis_client()
+    pubsub = redis.pubsub()
+    channel_name = f"channel:notifications:{user_id}"
+    await pubsub.subscribe(channel_name)
+
+    try:
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                await websocket.send_text(message["data"])
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await pubsub.unsubscribe(channel_name)
+        await pubsub.close()

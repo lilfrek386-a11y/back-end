@@ -8,6 +8,7 @@ __all__ = [
     "Question",
     "Quiz",
     "QuizAttempt",
+    "Notification",
 ]
 
 from app.models.base import Base
@@ -19,3 +20,4 @@ from app.models.answer_option import AnswerOption
 from app.models.question import Question
 from app.models.quiz import Quiz
 from app.models.quiz_attempt import QuizAttempt
+from app.models.notification import Notification

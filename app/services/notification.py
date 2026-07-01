@@ -1,11 +1,16 @@
+import json
+import logging
 from uuid import UUID
 
 from app.core.exceptions import (
     NotEnoughPermissionsException,
     NotificationNotFoundException,
 )
+from app.core.redis import get_redis_client
 from app.schemas.notification import NotificationListResponse, NotificationResponse
 from app.utils.uow import UnitOfWork
+
+logger = logging.getLogger(__name__)
 
 
 class NotificationService:
@@ -48,18 +53,35 @@ class NotificationService:
 async def send_quiz_notifications_bg(
     company_id: UUID, quiz_title: str, creator_id: UUID
 ) -> None:
-    async with UnitOfWork() as uow:
-        members, _ = await uow.company_members.get_company_members(
-            company_id, skip=0, limit=10_000
-        )
-
-        for member in members:
-            if member.user_id == creator_id:
-                continue
-
-            await uow.notifications.create(
-                {
-                    "user_id": member.user_id,
-                    "message": f"New quiz '{quiz_title}' is available in your company!",
-                }
+    try:
+        redis = get_redis_client()
+        async with UnitOfWork() as uow:
+            members, _ = await uow.company_members.get_company_members(
+                company_id, skip=0, limit=10_000
             )
+
+            for member in members:
+                if member.user_id == creator_id:
+                    continue
+
+                message_text = f"New quiz '{quiz_title}' is available in your company!"
+
+                new_notification = await uow.notifications.create(
+                    {
+                        "user_id": member.user_id,
+                        "message": message_text,
+                    }
+                )
+
+                ws_payload = {
+                    "id": str(new_notification.id),
+                    "message": message_text,
+                    "is_read": False,
+                    "created_at": new_notification.created_at.isoformat(),
+                }
+
+                channel_name = f"channel:notifications:{member.user_id}"
+                await redis.publish(channel_name, json.dumps(ws_payload))
+
+    except Exception as e:
+        logger.error(f"Failed to send notifications for quiz '{quiz_title}': {e}")
