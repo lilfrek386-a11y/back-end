@@ -15,7 +15,11 @@ def get_redis_client() -> redis.Redis:
 async def init_redis() -> None:
     global redis_client
     redis_client = redis.Redis(
-        host=settings.redis.HOST, port=settings.redis.PORT, decode_responses=True
+        host=settings.redis.HOST,
+        port=settings.redis.PORT,
+        decode_responses=True,
+        ssl=True,
+        ssl_cert_reqs=None,
     )
 
 
