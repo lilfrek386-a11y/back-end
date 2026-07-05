@@ -175,7 +175,17 @@ class UnsupportedExportFormatException(HTTPException):
         )
 
 
-class NotificationNotFoundException(Exception):
-    def __init__(self, detail: str = "Notification not found"):
-        self.detail = detail
-        super().__init__(detail)
+class NotificationNotFoundException(HTTPException):
+    def __init__(self):
+        super().__init__(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found.",
+        )
+
+
+class InvalidExcelFormatException(HTTPException):
+    def __init__(self, detail: str = "Invalid or corrupted Excel file."):
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=detail,
+        )
