@@ -9,6 +9,7 @@ from app.models.answer_option import AnswerOption
 from app.models.question import Question
 from app.models.quiz import Quiz
 from app.repositories.base import BaseRepository
+from app.schemas.quiz_import import ImportedQuestion
 
 
 class QuizRepository(BaseRepository[Quiz]):
@@ -67,3 +68,23 @@ class QuizRepository(BaseRepository[Quiz]):
         stmt = select(Quiz.id, Quiz.title).where(Quiz.id.in_(ids))
         result = await self.db.execute(stmt)
         return {row.id: row.title for row in result}
+
+    async def replace_questions_from_import(
+        self, quiz: Quiz, questions_data: list[ImportedQuestion]
+    ) -> None:
+        quiz.questions.clear()
+        await self.db.flush()
+
+        for q_data in questions_data:
+            question = Question(title=q_data.title, quiz_id=quiz.id)
+            self.db.add(question)
+            await self.db.flush()
+
+            for opt in q_data.answer_options:
+                self.db.add(
+                    AnswerOption(
+                        text=opt.text,
+                        is_correct=opt.is_correct,
+                        question_id=question.id,
+                    )
+                )

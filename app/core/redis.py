@@ -19,7 +19,7 @@ async def init_redis() -> None:
         port=settings.redis.PORT,
         decode_responses=True,
         ssl=True,
-        ssl_cert_reqs=None,
+        ssl_cert_reqs="none",
     )
 
 

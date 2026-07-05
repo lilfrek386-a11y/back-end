@@ -10,6 +10,7 @@ dependencies = [
     "celery[beat,gevent,redis]>=5.3.1",
     "fastapi>=0.136.3",
     "mypy>=1.11",
+    "openpyxl>=3.1.5",
     "pwdlib[argon2]>=0.3.0",
     "pydantic-settings>=2.14.1",
     "pydantic[email]>=2.13.4",
@@ -27,4 +28,5 @@ dev = [
     "httpx>=0.28.1",
     "pytest>=9.0.3",
     "pytest-asyncio>=1.4.0",
+    "types-openpyxl>=3.1.5.20260518",
 ]
