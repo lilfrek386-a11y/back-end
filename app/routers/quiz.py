@@ -1,7 +1,8 @@
 from uuid import UUID
 
-from fastapi import APIRouter, status, BackgroundTasks
+from fastapi import APIRouter, status, BackgroundTasks, UploadFile, File
 
+from app.dependencies.quiz_import import QuizImportService, QuizImportFormData
 from app.schemas.quiz import (
     QuizCreate,
     QuizUpdate,
@@ -11,6 +12,7 @@ from app.schemas.quiz import (
 from app.dependencies.quiz import QuizService
 from app.dependencies.auth import CurrentUser
 from app.dependencies.pagination import SkipQuery, LimitQuery
+from app.schemas.quiz_import import QuizImportResult
 
 router = APIRouter(tags=["Quizzes"])
 
@@ -96,3 +98,26 @@ async def delete_quiz(
     service: QuizService,
 ):
     await service.delete_quiz(user_id=current_user.id, quiz_id=quiz_id)
+
+
+@router.post(
+    "/companies/{company_id}/quizzes/import",
+    response_model=QuizImportResult,
+    status_code=status.HTTP_200_OK,
+    summary="Import quiz questions and answers from an Excel file",
+)
+async def import_quiz(
+    company_id: UUID,
+    current_user: CurrentUser,
+    service: QuizImportService,
+    form_data: QuizImportFormData,
+    file: UploadFile = File(...),
+):
+    return await service.import_quiz(
+        user_id=current_user.id,
+        company_id=company_id,
+        file=file,
+        title=form_data.title,
+        description=form_data.description,
+        quiz_id=form_data.quiz_id,
+    )
