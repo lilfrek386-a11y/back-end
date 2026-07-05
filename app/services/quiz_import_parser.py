@@ -28,7 +28,8 @@ async def parse_quiz_excel(file: UploadFile) -> list[ImportedQuestion]:
             "The file is corrupted or not a valid Excel file."
         )
 
-    assert sheet is not None, "Excel file must have an active sheet"
+    if sheet is None:
+        raise InvalidExcelFormatException("Excel file has no active sheet.")
 
     questions_map: dict[str, list[ImportedAnswerOption]] = {}
 
