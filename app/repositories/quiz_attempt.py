@@ -32,3 +32,23 @@ class QuizAttemptRepository(BaseRepository[QuizAttempt]):
             return 0.0
 
         return round(row.total_correct / row.total_questions, 2)
+
+    async def get_attempt_ids_for_export(
+        self,
+        user_id: UUID | None = None,
+        company_id: UUID | None = None,
+        quiz_id: UUID | None = None,
+    ) -> list[UUID]:
+        if not any([user_id, company_id, quiz_id]):
+            raise ValueError("At least one filter must be provided")
+
+        stmt = select(self.model.id)
+        if user_id:
+            stmt = stmt.where(self.model.user_id == user_id)
+        if company_id:
+            stmt = stmt.where(self.model.company_id == company_id)
+        if quiz_id:
+            stmt = stmt.where(self.model.quiz_id == quiz_id)
+
+        result = await self.db.execute(stmt)
+        return list(result.scalars().all())

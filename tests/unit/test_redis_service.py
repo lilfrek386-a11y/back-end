@@ -1,6 +1,7 @@
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
+from datetime import datetime, timezone
 from redis.exceptions import ConnectionError
 
 from app.services.redis import RedisService
@@ -26,6 +27,7 @@ def valid_quiz_details():
         user_id=uuid4(),
         company_id=uuid4(),
         quiz_id=uuid4(),
+        created_at=datetime.now(timezone.utc),
         answers=[
             QuestionDetail(
                 question_id=uuid4(), selected_option_ids=[uuid4()], is_correct=True

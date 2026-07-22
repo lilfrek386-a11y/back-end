@@ -256,7 +256,8 @@ async def test_update_quiz_success(quiz_service, mock_uow, base_uuids):
     mock_updated_quiz.company_id = company_id
     mock_updated_quiz.participation_frequency = 0
     mock_updated_quiz.questions = []
-    mock_uow.quizzes.update = AsyncMock(return_value=mock_updated_quiz)
+    mock_uow.quizzes.update = AsyncMock(return_value=mock_quiz)
+    mock_uow.quizzes.get_quiz_with_details = AsyncMock(return_value=mock_updated_quiz)
 
     quiz_data = QuizUpdate(title="New Title")
     result = await quiz_service.update_quiz(
@@ -265,6 +266,7 @@ async def test_update_quiz_success(quiz_service, mock_uow, base_uuids):
 
     assert result.title == "New Title"
     mock_uow.quizzes.update.assert_awaited_once_with(mock_quiz, {"title": "New Title"})
+    mock_uow.quizzes.get_quiz_with_details.assert_awaited_once_with(quiz_id)
 
 
 @pytest.mark.asyncio

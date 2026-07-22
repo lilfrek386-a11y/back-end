@@ -57,6 +57,10 @@ class QuizRepository(BaseRepository[Quiz]):
 
         self.db.add(db_quiz)
         await self.db.flush()
-        await self.db.refresh(db_quiz)
 
-        return db_quiz
+        return await self.get_quiz_with_details(db_quiz.id)
+
+    async def get_titles_by_ids(self, ids: set[UUID]) -> dict[UUID, str]:
+        stmt = select(Quiz.id, Quiz.title).where(Quiz.id.in_(ids))
+        result = await self.db.execute(stmt)
+        return {row.id: row.title for row in result}

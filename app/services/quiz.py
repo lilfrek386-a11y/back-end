@@ -6,6 +6,7 @@ from app.schemas.quiz import (
     QuizUpdate,
     QuizResponse,
     QuizzesResponseList,
+    QuizListResponse,
 )
 from app.utils.uow import UnitOfWork
 from app.core.exceptions import (
@@ -58,7 +59,7 @@ class QuizService:
             quizzes, total_count = await self.uow.quizzes.get_all_by_company(
                 company_id, skip, limit
             )
-            quizzes_list = [QuizResponse.model_validate(q) for q in quizzes]
+            quizzes_list = [QuizListResponse.model_validate(q) for q in quizzes]
 
             return QuizzesResponseList(quizzes=quizzes_list, total_count=total_count)
 
@@ -70,9 +71,12 @@ class QuizService:
             quiz = await self._get_quiz_and_check_permissions(quiz_id, user_id)
 
             update_dict = quiz_data.model_dump(exclude_unset=True)
-            updated_quiz = await self.uow.quizzes.update(quiz, update_dict)
+            await self.uow.quizzes.update(quiz, update_dict)
+
+            updated_quiz = await self.uow.quizzes.get_quiz_with_details(quiz.id)
 
             logger.info(f"Successfully updated quiz ID: {quiz_id}")
+
             return QuizResponse.model_validate(updated_quiz)
 
     async def delete_quiz(self, user_id: UUID, quiz_id: UUID) -> None:

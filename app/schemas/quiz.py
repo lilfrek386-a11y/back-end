@@ -1,7 +1,5 @@
 from uuid import UUID
-
 from pydantic import BaseModel, ConfigDict, Field
-
 from app.schemas.question import QuestionResponse, QuestionCreate
 
 
@@ -12,6 +10,16 @@ class QuizResponse(BaseModel):
     participation_frequency: int
     company_id: UUID
     questions: list[QuestionResponse]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class QuizListResponse(BaseModel):
+    id: UUID
+    title: str
+    description: str
+    participation_frequency: int
+    company_id: UUID
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -28,5 +36,5 @@ class QuizUpdate(BaseModel):
 
 
 class QuizzesResponseList(BaseModel):
-    quizzes: list[QuizResponse]
+    quizzes: list[QuizListResponse]
     total_count: int

@@ -23,3 +23,8 @@ class CompanyRepository(BaseRepository[Company]):
         )
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_names_by_ids(self, ids: set[UUID]) -> dict[UUID, str]:
+        stmt = select(Company.id, Company.name).where(Company.id.in_(ids))
+        result = await self.db.execute(stmt)
+        return {row.id: row.name for row in result}
