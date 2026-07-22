@@ -52,6 +52,28 @@ services:
       retries: 5
       start_period: 5s
 
+  celery-worker:
+    build: .
+    command: uv run celery -A app.core.celery worker --loglevel=info -P solo
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  celery-beat:
+    build: .
+    command: uv run celery -A app.core.celery beat --loglevel=info
+    depends_on:
+      redis:
+        condition: service_healthy
+      postgresql:
+        condition: service_healthy
+    env_file:
+      - .env
+
 volumes:
   redis-data:
   postgres-data:
