@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,8 +15,3 @@ class UserRepository(BaseRepository[User]):
         result = await self.db.execute(stmt)
 
         return result.scalar_one_or_none()
-
-    async def get_emails_by_ids(self, ids: set[UUID]) -> dict[UUID, str]:
-        stmt = select(User.id, User.email).where(User.id.in_(ids))
-        result = await self.db.execute(stmt)
-        return {row.id: row.email for row in result}

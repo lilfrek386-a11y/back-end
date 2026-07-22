@@ -1,4 +1,3 @@
-from datetime import datetime
 from uuid import UUID
 from pydantic import BaseModel
 
@@ -14,5 +13,4 @@ class RedisQuizAttemptDetail(BaseModel):
     user_id: UUID
     company_id: UUID
     quiz_id: UUID
-    created_at: datetime
     answers: list[QuestionDetail]
