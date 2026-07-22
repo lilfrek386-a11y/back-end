@@ -1,10 +1,10 @@
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, AsyncMock
 from uuid import uuid4
 from datetime import datetime, timezone, timedelta
 
 import pytest
 
-from app.tasks.quiz_reminder import _check_quiz_completions
+from app.services.quiz_reminder import QuizReminderService
 
 
 @pytest.mark.asyncio
@@ -25,8 +25,8 @@ async def test_check_quiz_completions_sends_notification(mock_uow):
     mock_uow.quiz_attempts.get_user_last_attempts = AsyncMock(return_value=[])
     mock_uow.notifications.create = AsyncMock()
 
-    with patch("app.tasks.quiz_reminder.UnitOfWork", return_value=mock_uow):
-        await _check_quiz_completions()
+    service = QuizReminderService(uow=mock_uow)
+    await service.notify_users_about_uncompleted_quizzes()
 
     mock_uow.notifications.create.assert_awaited_once()
     call_args = mock_uow.notifications.create.call_args[0][0]
@@ -61,7 +61,7 @@ async def test_check_quiz_completions_no_notification_if_recent(mock_uow):
     )
     mock_uow.notifications.create = AsyncMock()
 
-    with patch("app.tasks.quiz_reminder.UnitOfWork", return_value=mock_uow):
-        await _check_quiz_completions()
+    service = QuizReminderService(uow=mock_uow)
+    await service.notify_users_about_uncompleted_quizzes()
 
     mock_uow.notifications.create.assert_not_called()
