@@ -1,0 +1,38 @@
+from app.core.postgres import session_factory
+from app.repositories.answer_option import AnswerOptionRepository
+from app.repositories.company import CompanyRepository
+from app.repositories.company_action import CompanyActionRepository
+from app.repositories.company_member import CompanyMemberRepository
+from app.repositories.notification import NotificationRepository
+from app.repositories.question import QuestionRepository
+from app.repositories.quiz import QuizRepository
+from app.repositories.quiz_attempt import QuizAttemptRepository
+from app.repositories.user import UserRepository
+
+
+class UnitOfWork:
+    def __init__(self, session_factory=session_factory):
+        self._session_factory = session_factory
+
+    async def __aenter__(self):
+        self.session = self._session_factory()
+        self.users = UserRepository(self.session)
+        self.companies = CompanyRepository(self.session)
+        self.company_members = CompanyMemberRepository(self.session)
+        self.company_actions = CompanyActionRepository(self.session)
+        self.quizzes = QuizRepository(self.session)
+        self.quiz_attempts = QuizAttemptRepository(self.session)
+        self.questions = QuestionRepository(self.session)
+        self.answer_options = AnswerOptionRepository(self.session)
+        self.notifications = NotificationRepository(self.session)
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, tb):
+        try:
+            if exc_type is None:
+                await self.session.commit()
+            else:
+                await self.session.rollback()
+        finally:
+            await self.session.close()
+            self.session = None

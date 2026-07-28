@@ -1,0 +1,11 @@
+.venv
+.git
+.gitignore
+.env
+__pycache__
+.pytest_cache
+*.pyc
+README.md
+tests/
+tests/conftest.py
+.python-version

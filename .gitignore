@@ -1,0 +1,15 @@
+# Environments
+.venv
+env/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Environment variables
+.env
+
+# IDE
+.idea/
+.vscode/
