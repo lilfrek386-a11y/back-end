@@ -2,7 +2,7 @@
 *A robust FastAPI backend application developed as part of a Software Engineering Internship.*
 
 ## About
-Quizzify is a comprehensive SaaS-style backend service designed for corporate training and employee assessment. It provides a complete ecosystem for organizations to manage members, assign roles (Owner, Admin, User), and conduct regular assessments through a dynamic quiz system. The API handles complex workflows, including role-based access control (RBAC), temporary data caching, automated daily reminders, and detailed performance analytics.
+DataSkill-API is a comprehensive SaaS-style backend service designed for corporate training and employee assessment. It provides a complete ecosystem for organizations to manage members, assign roles (Owner, Admin, User), and conduct regular assessments through a dynamic quiz system. The API handles complex workflows, including role-based access control (RBAC), temporary data caching, automated daily reminders, and detailed performance analytics.
 
 ## Key Features
 * **Multi-Tenant Architecture:** Users can create and manage multiple companies, complete with an invite/request system and role-based permissions.
@@ -22,6 +22,7 @@ Quizzify is a comprehensive SaaS-style backend service designed for corporate tr
 * **Testing:** pytest
 * **DevOps & Infrastructure:** Docker, Docker Compose, GitHub Actions, AWS
 * **Package Management:** uv
+
 This is the setup for the FastAPI backend application, integrated with PostgreSQL and Redis.
 
 ## Prerequisites
